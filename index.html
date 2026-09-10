@@ -15,60 +15,63 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:"BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
     font-feature-settings:"tnum";line-height:1.2}
-  body{display:grid;grid-template-rows:4.6vh 29vh 20vh 37.5vh 2.2vh;gap:1vh;padding:1.2vh 2.2vw}
+  body{display:grid;grid-template-rows:3.8vh 28.2vh 26vh 34.8vh 2vh;gap:.8vh;padding:1vh 2.2vw}
   section{min-height:0;overflow:hidden}
 
   header{display:flex;justify-content:space-between;align-items:center}
-  header h1{font-size:3.4vh;font-weight:400;color:var(--mute)}
+  header h1{font-size:3vh;font-weight:400;color:var(--mute);white-space:nowrap}
   header h1 b{color:var(--ink);font-weight:700}
-  #clock{font-size:4.6vh;font-weight:700}
+  #clock{font-size:3.8vh;font-weight:700;white-space:nowrap}
 
-  /* 現在値 */
-  .cur{display:grid;grid-template-columns:1.2fr 1.05fr .85fr 1.2fr 1.3fr;gap:0}
-  .cur > div{padding:.6vh 1.3vw;border-left:1px solid var(--line);min-width:0;overflow:hidden}
+  /* 上段：遠目用の現在値 */
+  .cur{display:grid;grid-template-columns:1.25fr .95fr .95fr 1.2fr 1.45fr;gap:0}
+  .cur > div{padding:.5vh 1vw;border-left:1px solid var(--line);min-width:0;overflow:hidden}
   .cur > div:first-child{border-left:0}
-  .k{font-size:2.8vh;color:var(--mute);white-space:nowrap}
-  .v{font-size:15vh;font-weight:700;line-height:1;margin-top:.4vh;white-space:nowrap;letter-spacing:-.02em}
-  .v .u{font-size:4.6vh;font-weight:400;margin-left:.1em}
-  .s{font-size:2.8vh;color:var(--mute);margin-top:.6vh;white-space:nowrap}
+  .k{font-size:min(2.6vh,1.5vw);color:var(--mute);white-space:nowrap}
+  .v{font-size:min(13.5vh,7.6vw);font-weight:700;line-height:1;margin-top:.3vh;white-space:nowrap;letter-spacing:-.02em}
+  .v .u{font-size:min(4vh,2.25vw);font-weight:400;margin-left:.08em;letter-spacing:0}
+  .s{font-size:min(2.6vh,1.46vw);color:var(--mute);margin-top:.7vh;white-space:nowrap}
   .wbgt{background:var(--lv-bg);color:var(--lv-fg);transition:background .6s}
-  .wbgt .k,.wbgt .s{color:inherit;opacity:.85}
-  .wbgt .lv{font-size:6.4vh;font-weight:700;margin-top:.4vh;white-space:nowrap}
-  .cwx{display:flex;align-items:center;gap:1vw;margin-top:2vh}
-  .cwx svg{width:13vh;height:13vh;flex:none}
-  .cwx .t{font-size:7.5vh;font-weight:700;line-height:1.1;white-space:nowrap}
-  .wind{display:flex;align-items:center;gap:1vw;margin-top:2vh}
-  .wind svg{width:10vh;height:10vh;flex:none;transition:transform .8s}
-  .wind .dir{font-size:4.4vh;font-weight:700;white-space:nowrap}
-  .wind .spd{font-size:9vh;font-weight:700;white-space:nowrap;line-height:1}
-  .wind .spd .u{font-size:3.6vh;font-weight:400;margin-left:.2em}
+  .wbgt .k{color:inherit;opacity:.85}
+  .wbgt .v{font-size:min(16.5vh,9.3vw)}
+  .wbgt .v .dec{font-size:.55em;font-weight:700;letter-spacing:0}
+  .wbgt .lv{font-size:min(6.2vh,3.5vw);font-weight:700;margin-top:.3vh;white-space:nowrap}
+  .cwx{display:flex;align-items:center;gap:.8vw;margin-top:1.8vh}
+  .cwx svg{width:min(12vh,6.75vw);height:min(12vh,6.75vw);flex:none}
+  .cwx .t{font-size:min(7vh,3.9vw);font-weight:700;line-height:1.1;white-space:nowrap}
+  .wind{display:flex;align-items:center;gap:.8vw;margin-top:1.8vh}
+  .wind svg{width:min(9vh,5vw);height:min(9vh,5vw);flex:none;transition:transform .8s}
+  .wind .dir{font-size:min(4.2vh,2.36vw);font-weight:700;white-space:nowrap}
+  .wind .spd{font-size:min(8vh,4.5vw);font-weight:700;white-space:nowrap;line-height:1}
+  .wind .spd .u{font-size:min(3.4vh,1.9vw);font-weight:400;margin-left:.15em}
 
-  /* グラフ */
-  .chart{display:grid;grid-template-rows:auto 1fr;min-height:0}
+  /* グラフ（WBGT）＋ 気温の細帯 */
+  .chart{display:grid;grid-template-rows:auto 1fr 5.4vh;row-gap:.3vh;min-height:0}
+  .chart .k{font-size:2.7vh;line-height:1.15;white-space:nowrap;overflow:hidden}
   .chart .k b{color:var(--ink);font-weight:400}
-  .chart svg{width:100%;height:100%;display:block;overflow:visible}
-  .chip{display:inline-block;width:2.2vh;height:2.2vh;vertical-align:-.3vh;margin:0 .3vw 0 1.2vw;border-radius:.3vh}
+  .chart svg{width:100%;height:100%;display:block}
   .chart text{font-family:inherit}
+  .chip{display:inline-block;width:2.2vh;height:2.2vh;vertical-align:-.3vh;margin:0 .3vw 0 1vw;border-radius:.3vh}
 
   /* 表 */
   .tbl{min-height:0}
   table{width:100%;border-collapse:collapse;table-layout:fixed}
-  th,td{text-align:center;vertical-align:middle;border-top:1px solid var(--line);padding:0 .2vw;overflow:hidden;white-space:nowrap}
-  th{color:var(--mute);font-weight:400;font-size:3.2vh;text-align:left;padding-left:.4vw;width:6.2vw}
-  tr.r-hd th,tr.r-hd td{border-top:0;font-size:3.3vh;color:var(--mute);height:3.4vh}
+  th,td{text-align:center;vertical-align:middle;border-top:1px solid var(--line);padding:0 .2vw;overflow:hidden;white-space:nowrap;line-height:1}
+  th{color:var(--mute);font-weight:400;font-size:3vh;text-align:left;padding-left:.4vw;width:6.2vw}
+  tr.r-hd th,tr.r-hd td{border-top:0;font-size:3.1vh;color:var(--mute);height:3.1vh}
   tr.r-hd td.hl{color:var(--ink);font-weight:700}
   td.hl{background:rgba(255,255,255,.07)}
-  tr.r-wx td{height:6.5vh}
-  tr.r-wx svg{width:4vh;height:4vh;display:block;margin:0 auto}
-  tr.r-wx small{display:block;font-size:2.3vh;color:var(--mute);margin-top:0;line-height:1.05}
-  tr.r-num td{font-size:4.2vh;font-weight:700;height:4.5vh}
-  tr.r-num td small{font-size:2.5vh;font-weight:400;color:var(--mute)}
+  tr.r-wx td{height:6vh}
+  tr.r-wx svg{width:3.6vh;height:3.6vh;display:block;margin:0 auto}
+  tr.r-wx small{display:block;font-size:2.3vh;color:var(--mute);margin-top:.2vh;line-height:1.05}
+  tr.r-num td{font-size:3.9vh;font-weight:700;height:4.2vh}
+  tr.r-num td small{font-size:2.4vh;font-weight:400;color:var(--mute)}
   tr.r-num td.z{color:#5c6c7c;font-weight:400}
   tr.r-num td.rain{color:#9fd0ff}
-  tr.r-wd td{height:6.7vh;font-size:3.5vh;font-weight:700;line-height:1.1}
-  tr.r-wd svg{width:3.6vh;height:3.6vh;vertical-align:middle;margin-right:.2vw}
-  tr.r-wd small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);line-height:1.05}
-  tr.r-wb td{font-size:4.8vh;font-weight:700;height:5.4vh}
+  tr.r-wd td{height:6.2vh;font-size:3.3vh;font-weight:700}
+  tr.r-wd svg{width:3.4vh;height:3.4vh;vertical-align:middle;margin-right:.2vw}
+  tr.r-wd small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);margin-top:.3vh;line-height:1.05}
+  tr.r-wb td{font-size:4.5vh;font-weight:700;height:5vh}
   tr.r-wb td.c{border-left:2px solid var(--bg)}
 
   footer{display:flex;justify-content:space-between;gap:2vw;font-size:2.1vh;color:var(--mute);white-space:nowrap}
@@ -85,7 +88,7 @@
 <section class="cur">
   <div class="wbgt">
     <div class="k">暑さ指数 WBGT（推定）</div>
-    <div class="v" id="wbgt">--</div>
+    <div class="v"><span id="wbgt">--</span><span class="dec" id="wbgtDec"></span></div>
     <div class="lv" id="lvName">取得中</div>
   </div>
   <div>
@@ -111,8 +114,9 @@
 </section>
 
 <section class="chart">
-  <div class="k" style="font-size:2.8vh">これから12時間の推移（表と同じ時刻）　<b>━ WBGT</b>　<b style="color:#9fd0ff">╌ 気温</b>　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</div>
+  <div class="k">これから12時間の推移（表と同じ時刻）　<b>━ WBGT</b>　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険　<b style="color:#9fd0ff">╌ 気温（下の細い帯・別目盛）</b></div>
   <svg id="chart"></svg>
+  <svg id="chartT"></svg>
 </section>
 
 <section class="tbl"><table id="tbl"></table></section>
@@ -221,12 +225,14 @@ function renderNow(d){
   const lv = levelOf(wbgt);
   document.documentElement.style.setProperty('--lv-bg', lv.bg);
   document.documentElement.style.setProperty('--lv-fg', lv.fg);
-  $('wbgt').textContent = wbgt.toFixed(1);
+  $('wbgt').textContent = Math.floor(Math.abs(wbgt)) * Math.sign(wbgt) || 0;
+  $('wbgtDec').textContent = '.' + Math.abs(Math.round(wbgt*10)) % 10;
   $('lvName').textContent = lv.name;
 
   $('temp').textContent = Math.round(c.temperature_2m);
   $('tempSub').textContent = `最高${Math.round(d.daily.temperature_2m_max[0])}℃ 最低${Math.round(d.daily.temperature_2m_min[0])}℃`;
   $('rh').textContent = Math.round(c.relative_humidity_2m);
+  $('rh').parentElement.style.fontSize = Math.round(c.relative_humidity_2m) >= 100 ? 'min(9.5vh,5.3vw)' : '';
 
   const wx = WX[c.weather_code] || ['—','cloud'];
   $('wxIcon').innerHTML = ICON[wx[1]];
@@ -257,51 +263,67 @@ function renderTable(rows, i0, now){
   $('tbl').innerHTML = html;
 }
 
-/* ===== グラフ：表と同じ12時間・同じ列位置に揃える。背景＝WBGTレベル ===== */
-function renderChart(rows, i0){
-  const svg = $('chart');
-  const W = svg.clientWidth || 1200, H = svg.clientHeight || 200;
-  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-  const pts = rows.slice(i0, i0 + CONFIG.tableHours);
-  // 表の見出し行セルの中心座標に点を置く
+/* ===== グラフ：表と同じ12時間・同じ列位置。上＝WBGT（帯＝危険度）、下＝気温（別目盛） ===== */
+function colX(svg, n){
   const sx = svg.getBoundingClientRect().left;
   const cells = [...document.querySelectorAll('#tbl tr.r-hd td')];
-  const aligned = cells.length === pts.length;
-  const xs = aligned ? cells.map(c => { const r = c.getBoundingClientRect(); return r.left + r.width/2 - sx; })
-                     : pts.map((_,i) => W*0.07 + W*0.93*(i+0.5)/pts.length);
-  const left  = aligned ? cells[0].getBoundingClientRect().left - sx : W*0.07;
-  const right = aligned ? cells[cells.length-1].getBoundingClientRect().right - sx : W;
-  const m = {t: H*0.08, b: H*0.22};
-  const vals = pts.flatMap(p => [p.wbgt, p.temp]);
-  let lo = Math.floor((Math.min(...vals) - 1)/5)*5, hi = Math.ceil((Math.max(...vals) + 1)/5)*5;
-  if(hi - lo < 15) hi = lo + 15;
+  if(cells.length !== n){ const W = svg.clientWidth||1200; return {xs: Array.from({length:n},(_,i)=>W*0.07+W*0.93*(i+0.5)/n), left:W*0.07, right:W}; }
+  return { xs: cells.map(c=>{const r=c.getBoundingClientRect(); return r.left + r.width/2 - sx;}),
+           left: cells[0].getBoundingClientRect().left - sx, right: cells[cells.length-1].getBoundingClientRect().right - sx };
+}
+const vh = p => window.innerHeight * p / 100;
+
+function renderChart(rows, i0){
+  const pts = rows.slice(i0, i0 + CONFIG.tableHours);
+  /* --- WBGT --- */
+  const svg = $('chart');
+  const W = svg.clientWidth || 1200, H = svg.clientHeight || 130;
+  svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+  const {xs, left, right} = colX(svg, pts.length);
+  const fsT = vh(2.0), fsV = vh(2.4), r = Math.max(5, H*0.05);
+  const m = {t: fsV + r + vh(0.5), b: Math.max(6, H*0.05)};
+  const ws = pts.map(p=>p.wbgt);
+  let lo = Math.floor(Math.min(...ws) - 1.5), hi = Math.ceil(Math.max(...ws) + 1.5);
+  while(hi - lo < 6){ lo--; hi++; }
   const Y = v => m.t + (H - m.t - m.b) * (hi - v) / (hi - lo);
-  const fs = Math.round(H*0.11);
   let s = '';
-  // レベル帯
   const edges = [lo, 21, 25, 28, 31, hi];
   for(let k=0;k<5;k++){
     const a = Math.max(lo, Math.min(hi, edges[k])), b = Math.max(lo, Math.min(hi, edges[k+1]));
-    if(b > a) s += `<rect x="${left}" y="${Y(b)}" width="${right-left}" height="${Y(a)-Y(b)}" fill="${LEVELS[k].bg}" opacity=".28"/>`;
+    if(b > a) s += `<rect x="${left}" y="${Y(b)}" width="${right-left}" height="${Y(a)-Y(b)}" fill="${LEVELS[k].bg}" opacity=".30"/>`;
   }
-  // 目盛（左の見出し列に置く）
-  for(let v=lo; v<=hi; v+=5){
-    s += `<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="#ffffff" opacity=".18"/>`;
-    s += `<text x="${left-8}" y="${Y(v)+fs*0.35}" font-size="${fs}" fill="#b9c5d0" text-anchor="end">${v}</text>`;
-  }
-  // 列の区切り（表の縦位置と対応）
+  // 目盛：レベル境界（21/25/28/31）と上下端。境界に近い端の数字は省く
+  const bounds = [21,25,28,31].filter(v => v > lo && v < hi);
+  const ticks = [...bounds];
+  if(!bounds.some(v => Math.abs(Y(v) - Y(hi)) < fsT*1.2)) ticks.push(hi);
+  if(!bounds.some(v => Math.abs(Y(v) - Y(lo)) < fsT*1.2)) ticks.push(lo);
+  bounds.forEach(v => { s += `<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="#ffffff" opacity=".3"/>`; });
+  ticks.forEach(v => { s += `<text x="${left-8}" y="${Y(v)+fsT*0.35}" font-size="${fsT}" fill="#b9c5d0" text-anchor="end">${v}</text>`; });
   xs.forEach(x => { s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H-m.b}" stroke="#ffffff" opacity=".07"/>`; });
-  // 折れ線
-  const path = key => pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(p[key]).toFixed(1)}`).join(' ');
-  s += `<path d="${path('temp')}" fill="none" stroke="#9fd0ff" stroke-width="${H*0.018}" stroke-dasharray="${H*0.04} ${H*0.03}" stroke-linejoin="round" stroke-linecap="round"/>`;
-  s += `<path d="${path('wbgt')}" fill="none" stroke="#f4efe6" stroke-width="${H*0.03}" stroke-linejoin="round" stroke-linecap="round"/>`;
-  // 毎時のマーカーと値
+  s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(p.wbgt).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(3,H*0.035)}" stroke-linejoin="round" stroke-linecap="round"/>`;
   pts.forEach((p,i)=>{
     const l = levelOf(p.wbgt);
-    s += `<circle cx="${xs[i]}" cy="${Y(p.wbgt)}" r="${H*0.042}" fill="${l.bg}" stroke="#f4efe6" stroke-width="${H*0.012}"/>`;
-    s += `<text x="${xs[i]}" y="${Y(p.wbgt)+H*0.042+fs*1.05}" font-size="${fs*1.15}" font-weight="700" fill="#f4efe6" text-anchor="middle">${p.wbgt.toFixed(0)}</text>`;
+    s += `<circle cx="${xs[i]}" cy="${Y(p.wbgt)}" r="${r}" fill="${l.bg}" stroke="#f4efe6" stroke-width="${Math.max(2,H*0.014)}"/>`;
+    s += `<text x="${xs[i]}" y="${Y(p.wbgt)-r-vh(0.5)}" font-size="${fsV}" font-weight="700" fill="#f4efe6" text-anchor="middle">${p.wbgt.toFixed(0)}</text>`;
   });
   svg.innerHTML = s;
+
+  /* --- 気温（別目盛の細い帯） --- */
+  const sv2 = $('chartT');
+  const W2 = sv2.clientWidth || W, H2 = sv2.clientHeight || 60;
+  sv2.setAttribute('viewBox', `0 0 ${W2} ${H2}`);
+  const c2 = colX(sv2, pts.length);
+  const ts = pts.map(p=>p.temp);
+  let lo2 = Math.floor(Math.min(...ts)) - 1, hi2 = Math.ceil(Math.max(...ts)) + 1;
+  while(hi2 - lo2 < 4){ lo2--; hi2++; }
+  const pad2 = Math.max(4, H2*0.14), fs2 = vh(2.0);
+  const Y2 = v => pad2 + (H2 - 2*pad2) * (hi2 - v) / (hi2 - lo2);
+  let t = `<rect x="${c2.left}" y="0" width="${c2.right-c2.left}" height="${H2}" fill="#9fd0ff" opacity=".07"/>`;
+  t += `<text x="${c2.left-8}" y="${fs2}" font-size="${fs2}" fill="#9fd0ff" text-anchor="end">${hi2}℃</text>`;
+  t += `<text x="${c2.left-8}" y="${H2-2}" font-size="${fs2}" fill="#9fd0ff" text-anchor="end">${lo2}℃</text>`;
+  t += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${c2.xs[i].toFixed(1)},${Y2(p.temp).toFixed(1)}`).join(' ')}" fill="none" stroke="#9fd0ff" stroke-width="${Math.max(2,H2*0.05)}" stroke-dasharray="${H2*0.16} ${H2*0.11}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  pts.forEach((p,i)=>{ t += `<circle cx="${c2.xs[i]}" cy="${Y2(p.temp)}" r="${Math.max(3,H2*0.07)}" fill="#9fd0ff"/>`; });
+  sv2.innerHTML = t;
 }
 
 /* ===== 更新スケジュール ===== */
@@ -330,7 +352,11 @@ function scheduleNext(){
   $('next').textContent = fmtHM(next);
   setTimeout(()=>{ refresh(); scheduleNext(); }, next - now);
 }
-window.addEventListener('resize', ()=>{ if(lastData) renderAll(lastData); });
+let rerenderTimer = null;
+const rerender = () => { if(!lastData) return; clearTimeout(rerenderTimer); rerenderTimer = setTimeout(()=>renderAll(lastData), 150); };
+window.addEventListener('resize', rerender);
+if(document.fonts && document.fonts.ready) document.fonts.ready.then(rerender);   // Webフォント読込後に列位置を再計算
+if(window.ResizeObserver) new ResizeObserver(rerender).observe($('chart'));
 
 $('place').textContent = CONFIG.placeName;
 refresh();
