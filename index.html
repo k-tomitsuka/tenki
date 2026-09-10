@@ -15,7 +15,7 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:"BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
     font-feature-settings:"tnum";line-height:1.2}
-  body{display:grid;grid-template-rows:3.8vh 29.5vh 25.1vh 37.2vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
+  body{display:grid;grid-template-rows:3.8vh 29.5vh 25.5vh 36.8vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
   section{min-height:0;overflow:hidden}
 
   header{display:flex;justify-content:space-between;align-items:center}
@@ -48,7 +48,7 @@
   .wind .spd .u{font-size:min(3.4vh,1.9vw);font-weight:400;margin-left:.15em}
 
   /* グラフ（WBGT）＋ 気温の細帯 */
-  .chart{display:grid;grid-template-rows:auto 1fr 9vh;row-gap:.4vh;min-height:0}
+  .chart{display:grid;grid-template-rows:auto 1fr;row-gap:.4vh;min-height:0}
   .chart .k{font-size:2.9vh;line-height:1.15;white-space:nowrap;overflow:hidden}
   .chart .k b{color:var(--ink);font-weight:400}
   .chart svg{width:100%;height:100%;display:block}
@@ -66,17 +66,17 @@
   tr.r-wx td{height:5.8vh}
   tr.r-wx svg{width:3.8vh;height:3.8vh;display:block;margin:0 auto}
   tr.r-wx small{display:block;font-size:2.3vh;color:var(--mute);margin-top:.2vh;line-height:1.05}
-  tr.r-num td{font-size:4vh;font-weight:700;height:4.2vh}
+  tr.r-num td{font-size:4.2vh;font-weight:700;height:4.5vh}
+  tr.r-num.pr td{font-size:3.8vh;height:4.2vh}
   tr.r-num td small{font-size:2.4vh;font-weight:400;color:var(--mute)}
   tr.r-num td.z{color:#5c6c7c;font-weight:400}
   tr.r-num td.rain{color:#9fd0ff}
   tr.r-pop th{font-size:2.6vh}
   tr.r-pop td{height:3.6vh;font-size:3vh;color:var(--mute);border-left:1px solid var(--line)}
   tr.r-pop td.hi{color:#9fd0ff;font-weight:700}
-  tr.r-wd td{height:6vh;font-size:3.4vh;font-weight:700}
-  tr.r-wd svg{width:3.4vh;height:3.4vh;vertical-align:middle;margin-right:.2vw}
-  tr.r-wd small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);margin-top:.3vh;line-height:1.05}
-  tr.r-wb td{font-size:4.6vh;font-weight:700;height:5vh}
+  tr.r-wd td{height:4.8vh;font-size:4vh;font-weight:700}
+  tr.r-wd svg{width:3.6vh;height:3.6vh;vertical-align:middle;margin-right:.3vw}
+  tr.r-wb td{font-size:4.6vh;font-weight:700;height:5.2vh}
   tr.r-wb td.c{border-left:2px solid var(--bg)}
 
 </style>
@@ -118,9 +118,8 @@
 </section>
 
 <section class="chart">
-  <div class="k">これから12時間　<b>━ 気温</b>　　下段：WBGT　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</div>
+  <div class="k">これから12時間の気温　　●の色＝その時刻のWBGT危険度　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</div>
   <svg id="chartTemp"></svg>
-  <svg id="chartWbgt"></svg>
 </section>
 
 <section class="tbl"><table id="tbl"></table></section>
@@ -138,7 +137,8 @@ const CONFIG = {
   weights: {jma_msm: 2},
   // 背景色：今の天気に連動（暗めの色調。WBGTの5色と混同しないよう彩度は抑えめ）。夜間はさらに暗く
   skyColors: {sun:'#8a5a1a', partly:'#5c4b2e', cloud:'#4a5058', fog:'#55616b', rain:'#16305e', snow:'#56708a', thunder:'#3b2a5e'},
-  skyNight: [18, 5],           // この時刻の間は夜扱い（暗くする）
+  skyNight: [18, 5],           // この時刻の間は夜扱い（背景を暗くする）
+  dimNight: [22, 5], dimLevel: 0.75,   // この時刻の間は画面全体を減光（1で無効）
   jmaOffice: '100000', jmaArea: '100010',   // 気象庁 府県予報（今日の概況）と地域時系列予報（3時間ごとの天気）。渋川市を含む区域
   dailyReloadHour: 3
 };
@@ -211,6 +211,8 @@ function tickClock(){
   const d = new Date();
   $('clock').textContent = `${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}） ${fmtHM(d)}`;
   if(d.getHours()===CONFIG.dailyReloadHour && d.getMinutes()===30 && d.getSeconds()===0) location.reload();
+  const h = d.getHours(), [a, b] = CONFIG.dimNight, night = a > b ? (h >= a || h < b) : (h >= a && h < b);
+  document.documentElement.style.filter = (night && CONFIG.dimLevel < 1) ? `brightness(${CONFIG.dimLevel})` : '';
 }
 setInterval(tickClock, 1000); tickClock();
 
@@ -295,7 +297,7 @@ async function fetchJma(){
     const ts = j[0].timeSeries[0];
     const area = ts.areas.find(a => a.area.code === CONFIG.jmaArea) || ts.areas[0];
     const day = new Date(ts.timeDefines[0]).getDate() === new Date().getDate() ? '今日' : '明日';
-    const text = String(area.weathers[0]).replace(/[\s\u3000]+/g, '');
+    const text = String(area.weathers[0]).replace(/[\s\u3000]+/g, ' ');
     $('sub').textContent = `${day}の天気：${text}`;
     // 降水確率（6時間ごと）
     const ps = j[0].timeSeries[1];
@@ -365,12 +367,12 @@ function renderTable(rows, i0, now){
   html += `<tr class="r-wx"><th>天気</th>${cols.map((r,i)=>{const c=catFor(r);return `<td ${cls(i)}>${ICON[c]}<small>${catLabel(c, r.cloud)}</small></td>`;}).join('')}</tr>`;
   html += `<tr class="r-num"><th>気温</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.temp.toFixed(0)}<small>℃</small></td>`).join('')}</tr>`;
   html += `<tr class="r-num"><th>湿度</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.rh.toFixed(0)}<small>%</small></td>`).join('')}</tr>`;
-  html += `<tr class="r-num"><th>降水</th>${cols.map((r,i)=>{const z=r.pr<0.5;return `<td class="${i===0?'hl ':''}${z?'z':'rain'}">${z?'0':(r.pr<10?r.pr.toFixed(1):r.pr.toFixed(0))}<small>${z?'':'mm'}</small></td>`;}).join('')}</tr>`;
+  html += `<tr class="r-num pr"><th>降水</th>${cols.map((r,i)=>{const z=r.pr<0.5;return `<td class="${i===0?'hl ':''}${z?'z':'rain'}">${z?'':(r.pr<10?r.pr.toFixed(1):r.pr.toFixed(0))}<small>${z?'':'mm'}</small></td>`;}).join('')}</tr>`;
   // 降水確率：気象庁の6時間区分ごとに1セル（結合表示）
   const groups = [];
   cols.forEach((r,i)=>{ const key = popKey(r); const g = groups[groups.length-1]; if(g && g.key===key) g.n++; else groups.push({key, n:1, pop: popFor(r)}); });
   html += `<tr class="r-pop"><th>降水確率</th>${groups.map(g=>`<td colspan="${g.n}" class="${g.pop!==null&&g.pop>=50?'hi':''}">${g.pop!==null?g.pop+'%':'—'}</td>`).join('')}</tr>`;
-  html += `<tr class="r-wd"><th>風</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.ws<0.3?'静穏':ARROW.replace('DEG',(r.wd+180)%360)+r.ws.toFixed(1)}<small>${r.ws<0.3?'':dirName(r.wd)}</small></td>`).join('')}</tr>`;
+  html += `<tr class="r-wd"><th>風速</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.ws<0.3?'<span style="font-size:2.8vh;font-weight:400;color:var(--mute)">静穏</span>':ARROW.replace('DEG',(r.wd+180)%360)+r.ws.toFixed(1)}</td>`).join('')}</tr>`;
   html += `<tr class="r-wb"><th>WBGT</th>${cols.map((r,i)=>{const l=levelOf(r.wbgt);return `<td class="c" style="background:${l.bg};color:${l.fg}">${r.wbgt.toFixed(0)}</td>`;}).join('')}</tr>`;
   $('tbl').innerHTML = html;
 }
@@ -387,57 +389,26 @@ const vh = p => window.innerHeight * p / 100;
 
 function renderChart(rows, i0){
   const pts = rows.slice(i0, i0 + CONFIG.tableHours);
-
-  /* --- 上：気温（主役） --- */
   const svg = $('chartTemp');
-  const W = svg.clientWidth || 1200, H = svg.clientHeight || 160;
+  const W = svg.clientWidth || 1200, H = svg.clientHeight || 220;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   const {xs, left, right} = colX(svg, pts.length);
-  const fsT = vh(2.2), fsV = vh(2.8), r = Math.max(5, H*0.05);
-  const m = {t: fsV + r + vh(0.5), b: Math.max(6, H*0.06)};
+  const fsT = vh(2.4), r = Math.max(6, vh(1.1));
+  const m = {t: r + vh(0.8), b: r + vh(0.8)};
   const ts = pts.map(p=>p.temp).filter(v=>v!==null);
-  let lo = Math.floor(Math.min(...ts) - 1.5), hi = Math.ceil(Math.max(...ts) + 1.5);
+  let lo = Math.floor(Math.min(...ts) - 1), hi = Math.ceil(Math.max(...ts) + 1);
   while(hi - lo < 6){ lo--; hi++; }
   const Y = v => m.t + (H - m.t - m.b) * (hi - v) / (hi - lo);
   let s = `<rect x="${left}" y="${m.t}" width="${right-left}" height="${H-m.t-m.b}" fill="#ffffff" opacity=".04"/>`;
-  const step = (hi - lo) > 12 ? 5 : 2;
+  const step = (hi - lo) > 12 ? 5 : ((hi - lo) > 7 ? 2 : 1);
   for(let v = Math.ceil(lo/step)*step; v <= hi; v += step){
     s += `<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="#ffffff" opacity=".14"/>`;
     s += `<text x="${left-8}" y="${Y(v)+fsT*0.35}" font-size="${fsT}" fill="#b9c5d0" text-anchor="end">${v}℃</text>`;
   }
   xs.forEach(x => { s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H-m.b}" stroke="#ffffff" opacity=".07"/>`; });
-  s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(p.temp).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(3,H*0.03)}" stroke-linejoin="round" stroke-linecap="round"/>`;
-  pts.forEach((p,i)=>{
-    s += `<circle cx="${xs[i]}" cy="${Y(p.temp)}" r="${r}" fill="#f4efe6"/>`;
-    s += `<text x="${xs[i]}" y="${Y(p.temp)-r-vh(0.5)}" font-size="${fsV}" font-weight="700" fill="#f4efe6" text-anchor="middle">${Math.round(p.temp)}</text>`;
-  });
+  s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(p.temp).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(3, vh(0.5))}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  pts.forEach((p,i)=>{ const l = levelOf(p.wbgt); s += `<circle cx="${xs[i]}" cy="${Y(p.temp)}" r="${r}" fill="${l.bg}" stroke="#f4efe6" stroke-width="${Math.max(2, vh(0.3))}"/>`; });
   svg.innerHTML = s;
-
-  /* --- 下：WBGT（帯＝危険度、点の色＝その時刻の危険度。数値は表のWBGT行） --- */
-  const sv2 = $('chartWbgt');
-  const W2 = sv2.clientWidth || W, H2 = sv2.clientHeight || 100;
-  sv2.setAttribute('viewBox', `0 0 ${W2} ${H2}`);
-  const c2 = colX(sv2, pts.length);
-  const ws = pts.map(p=>p.wbgt).filter(v=>v!==null);
-  let lo2 = Math.floor(Math.min(...ws) - 1), hi2 = Math.ceil(Math.max(...ws) + 1);
-  while(hi2 - lo2 < 6){ lo2--; hi2++; }
-  const r2 = Math.max(5, H2*0.09), m2 = {t: r2 + 2, b: r2 + 2}, fs2 = vh(2.0);
-  const Y2 = v => m2.t + (H2 - m2.t - m2.b) * (hi2 - v) / (hi2 - lo2);
-  let t = '';
-  const edges = [lo2, 21, 25, 28, 31, hi2];
-  for(let k=0;k<5;k++){
-    const a = Math.max(lo2, Math.min(hi2, edges[k])), b = Math.max(lo2, Math.min(hi2, edges[k+1]));
-    if(b > a) t += `<rect x="${c2.left}" y="${Y2(b)}" width="${c2.right-c2.left}" height="${Y2(a)-Y2(b)}" fill="${LEVELS[k].bg}" opacity=".38"/>`;
-  }
-  const bounds = [21,25,28,31].filter(v => v > lo2 && v < hi2);
-  bounds.forEach(v => {
-    t += `<line x1="${c2.left}" x2="${c2.right}" y1="${Y2(v)}" y2="${Y2(v)}" stroke="#ffffff" opacity=".35"/>`;
-    t += `<text x="${c2.left-8}" y="${Y2(v)+fs2*0.35}" font-size="${fs2}" fill="#b9c5d0" text-anchor="end">${v}</text>`;
-  });
-  if(!bounds.length){ t += `<text x="${c2.left-8}" y="${Y2((lo2+hi2)/2)+fs2*0.35}" font-size="${fs2}" fill="#b9c5d0" text-anchor="end">WBGT</text>`; }
-  t += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${c2.xs[i].toFixed(1)},${Y2(p.wbgt).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(2,H2*0.035)}" stroke-linejoin="round" stroke-linecap="round"/>`;
-  pts.forEach((p,i)=>{ const l = levelOf(p.wbgt); t += `<circle cx="${c2.xs[i]}" cy="${Y2(p.wbgt)}" r="${r2}" fill="${l.bg}" stroke="#f4efe6" stroke-width="${Math.max(2,H2*0.03)}"/>`; });
-  sv2.innerHTML = t;
 }
 
 /* ===== 更新スケジュール ===== */
