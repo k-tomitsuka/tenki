@@ -15,7 +15,7 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:"BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
     font-feature-settings:"tnum";line-height:1.2}
-  body{display:grid;grid-template-rows:3.8vh 29.5vh 27.3vh 35vh;gap:.8vh;padding:1vh 1.6vw}
+  body{display:grid;grid-template-rows:3.8vh 29.5vh 27.3vh 35vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
   section{min-height:0;overflow:hidden}
 
   header{display:flex;justify-content:space-between;align-items:center}
@@ -26,7 +26,7 @@
   .status .warn{color:#f2c400;margin-right:.8vw}
 
   /* 上段：遠目用の現在値 */
-  .cur{display:grid;grid-template-columns:1.25fr .95fr .95fr 1.2fr 1.45fr;gap:0}
+  .cur{display:grid;grid-template-columns:.95fr .95fr 1.2fr 1.45fr 1.25fr;gap:0}
   .cur > div{padding:.5vh 1vw;border-left:1px solid var(--line);min-width:0;overflow:hidden}
   .cur > div:first-child{border-left:0}
   .k{font-size:min(2.6vh,1.5vw);color:var(--mute);white-space:nowrap}
@@ -87,11 +87,6 @@
 </header>
 
 <section class="cur">
-  <div class="wbgt">
-    <div class="k">暑さ指数 WBGT（推定）</div>
-    <div class="v"><span id="wbgt">--</span><span class="dec" id="wbgtDec"></span></div>
-    <div class="lv" id="lvName">取得中</div>
-  </div>
   <div>
     <div class="k">気温</div>
     <div class="v"><span id="temp">--</span><span class="u">℃</span></div>
@@ -111,6 +106,11 @@
       <svg id="windArrow" viewBox="0 0 100 100" aria-hidden="true"><path d="M50 6 L74 50 L56 44 L56 94 L44 94 L44 44 L26 50 Z" fill="currentColor"/></svg>
       <div><div class="dir" id="windDir">--</div><div class="spd"><span id="windSpd">--</span><span class="u">m/s</span></div></div>
     </div>
+  </div>
+  <div class="wbgt">
+    <div class="k">暑さ指数 WBGT（推定）</div>
+    <div class="v"><span id="wbgt">--</span><span class="dec" id="wbgtDec"></span></div>
+    <div class="lv" id="lvName">取得中</div>
   </div>
 </section>
 
@@ -133,6 +133,9 @@ const CONFIG = {
   // 合議に使う数値予報モデル（Open-Meteo経由・すべて公開データ）。気象庁MSMは地域モデルなので重み2
   models: ['jma_msm','ecmwf_ifs025','gfs_seamless','icon_seamless','ukmo_seamless'],
   weights: {jma_msm: 2},
+  // 背景色：今の天気に連動（暗めの色調。WBGTの5色と混同しないよう彩度は抑えめ）。夜間はさらに暗く
+  skyColors: {sun:'#8a5a1a', partly:'#5c4b2e', cloud:'#4a5058', fog:'#55616b', rain:'#16305e', snow:'#56708a', thunder:'#3b2a5e'},
+  skyNight: [18, 5],           // この時刻の間は夜扱い（暗くする）
   jmaOffice: '100000', jmaArea: '100010',   // 気象庁 府県予報（今日の概況）と地域時系列予報（3時間ごとの天気）。渋川市を含む区域
   dailyReloadHour: 3
 };
@@ -312,9 +315,11 @@ function renderNow(rows, i0, now){
   $('rh').textContent = Math.round(rh);
   $('rh').parentElement.style.fontSize = Math.round(rh) >= 100 ? 'min(9.5vh,5.3vw)' : '';
 
-  const cur = f < 0.5 ? a : b, cc = catFor(cur);
+  const forced = new URLSearchParams(location.search).get('wx');      // ?wx=rain などで天気表示・背景色の確認
+  const cur = f < 0.5 ? a : b, cc = (forced && ICON[forced]) ? forced : catFor(cur);
   $('wxIcon').innerHTML = ICON[cc];
   $('wxText').textContent = catLabel(cc, cur.cloud);
+  setSky(cc, now);
 
   if(ws < 0.3){ $('windDir').textContent = '静穏'; $('windArrow').style.opacity = .25; }
   else{
@@ -323,6 +328,13 @@ function renderNow(rows, i0, now){
     $('windArrow').style.opacity = 1;
   }
   $('windSpd').textContent = ws.toFixed(1);
+}
+/* 背景を今の天気の色に。夜はベース色に寄せて暗くする */
+function setSky(cat, now){
+  const hex = CONFIG.skyColors[cat] || CONFIG.skyColors.cloud;
+  const h = now.getHours(), [n0, n1] = CONFIG.skyNight, night = n0 > n1 ? (h >= n0 || h < n1) : (h >= n0 && h < n1);
+  const mix = (a, b, t) => { const pa = [1,3,5].map(i=>parseInt(a.slice(i,i+2),16)), pb = [1,3,5].map(i=>parseInt(b.slice(i,i+2),16)); return '#' + pa.map((v,i)=>Math.round(v+(pb[i]-v)*t).toString(16).padStart(2,'0')).join(''); };
+  document.documentElement.style.setProperty('--sky', night ? mix(hex, '#1c2733', 0.55) : hex);
 }
 function catLabel(cat, cloud){
   if(cat==='sun') return (cloud!==null && cloud !== undefined && cloud <= 10) ? '快晴' : '晴れ';
