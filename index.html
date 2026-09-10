@@ -15,7 +15,7 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:"BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
     font-feature-settings:"tnum";line-height:1.2}
-  body{display:grid;grid-template-rows:3.8vh 29.5vh 25.9vh 36.4vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
+  body{display:grid;grid-template-rows:3.8vh 29.5vh 25.1vh 37.2vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
   section{min-height:0;overflow:hidden}
 
   header{display:flex;justify-content:space-between;align-items:center}
@@ -60,26 +60,23 @@
   table{width:100%;border-collapse:collapse;table-layout:fixed}
   th,td{text-align:center;vertical-align:middle;border-top:1px solid var(--line);padding:0 .2vw;overflow:hidden;white-space:nowrap;line-height:1}
   th{color:var(--mute);font-weight:400;font-size:3.1vh;text-align:left;padding-left:.4vw;width:6.2vw}
-  tr.r-hd th,tr.r-hd td{border-top:0;font-size:3.2vh;color:var(--mute);height:3.2vh}
+  tr.r-hd th,tr.r-hd td{border-top:0;font-size:3.2vh;color:var(--mute);height:3vh}
   tr.r-hd td.hl{color:var(--ink);font-weight:700}
   td.hl{background:rgba(255,255,255,.07)}
-  tr.r-wx td{height:6.2vh}
+  tr.r-wx td{height:5.8vh}
   tr.r-wx svg{width:3.8vh;height:3.8vh;display:block;margin:0 auto}
   tr.r-wx small{display:block;font-size:2.3vh;color:var(--mute);margin-top:.2vh;line-height:1.05}
-  tr.r-num td{font-size:4vh;font-weight:700;height:4.3vh}
+  tr.r-num td{font-size:4vh;font-weight:700;height:4.2vh}
   tr.r-num td small{font-size:2.4vh;font-weight:400;color:var(--mute)}
   tr.r-num td.z{color:#5c6c7c;font-weight:400}
   tr.r-num td.rain{color:#9fd0ff}
-  tr.r-pr td{height:6.2vh;font-size:4vh;font-weight:700}
-  tr.r-pr td .u{font-size:2.4vh;font-weight:400;color:var(--mute)}
-  tr.r-pr td small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);margin-top:.3vh;line-height:1.05}
-  tr.r-pr td small.hi{color:#9fd0ff}
-  tr.r-pr td.z{color:#5c6c7c;font-weight:400}
-  tr.r-pr td.rain{color:#9fd0ff}
-  tr.r-wd td{height:6.4vh;font-size:3.4vh;font-weight:700}
+  tr.r-pop th{font-size:2.6vh}
+  tr.r-pop td{height:3.6vh;font-size:3vh;color:var(--mute);border-left:1px solid var(--line)}
+  tr.r-pop td.hi{color:#9fd0ff;font-weight:700}
+  tr.r-wd td{height:6vh;font-size:3.4vh;font-weight:700}
   tr.r-wd svg{width:3.4vh;height:3.4vh;vertical-align:middle;margin-right:.2vw}
   tr.r-wd small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);margin-top:.3vh;line-height:1.05}
-  tr.r-wb td{font-size:4.6vh;font-weight:700;height:5.3vh}
+  tr.r-wb td{font-size:4.6vh;font-weight:700;height:5vh}
   tr.r-wb td.c{border-left:2px solid var(--bg)}
 
 </style>
@@ -283,6 +280,7 @@ async function fetchJmaWx(){
   }catch(e){ jmaWx = []; }
 }
 function popFor(row){ const t = row.t.getTime(); const hit = jmaPop.find(x => t >= x.t0 && t < x.t1); return hit ? hit.pop : null; }
+function popKey(row){ const t = row.t.getTime(); const hit = jmaPop.find(x => t >= x.t0 && t < x.t1); return hit ? hit.t0 : 'b' + Math.floor(row.t.getHours()/6) + '-' + row.t.getDate(); }
 function catFor(row){                  // 公式予報があればそれを、無ければモデル合議
   const t = row.t.getTime();
   const hit = jmaWx.find(x => t >= x.t0 && t < x.t1);
@@ -367,7 +365,11 @@ function renderTable(rows, i0, now){
   html += `<tr class="r-wx"><th>天気</th>${cols.map((r,i)=>{const c=catFor(r);return `<td ${cls(i)}>${ICON[c]}<small>${catLabel(c, r.cloud)}</small></td>`;}).join('')}</tr>`;
   html += `<tr class="r-num"><th>気温</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.temp.toFixed(0)}<small>℃</small></td>`).join('')}</tr>`;
   html += `<tr class="r-num"><th>湿度</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.rh.toFixed(0)}<small>%</small></td>`).join('')}</tr>`;
-  html += `<tr class="r-pr"><th>降水</th>${cols.map((r,i)=>{const z=r.pr<0.05, pop=popFor(r);return `<td class="${i===0?'hl ':''}${z?'z':'rain'}">${z?'0':(r.pr<10?r.pr.toFixed(1):r.pr.toFixed(0))}<span class="u">${z?'':'mm'}</span><small class="${pop!==null&&pop>=50?'hi':''}">${pop!==null?pop+'%':''}</small></td>`;}).join('')}</tr>`;
+  html += `<tr class="r-num"><th>降水</th>${cols.map((r,i)=>{const z=r.pr<0.5;return `<td class="${i===0?'hl ':''}${z?'z':'rain'}">${z?'0':(r.pr<10?r.pr.toFixed(1):r.pr.toFixed(0))}<small>${z?'':'mm'}</small></td>`;}).join('')}</tr>`;
+  // 降水確率：気象庁の6時間区分ごとに1セル（結合表示）
+  const groups = [];
+  cols.forEach((r,i)=>{ const key = popKey(r); const g = groups[groups.length-1]; if(g && g.key===key) g.n++; else groups.push({key, n:1, pop: popFor(r)}); });
+  html += `<tr class="r-pop"><th>降水確率</th>${groups.map(g=>`<td colspan="${g.n}" class="${g.pop!==null&&g.pop>=50?'hi':''}">${g.pop!==null?g.pop+'%':'—'}</td>`).join('')}</tr>`;
   html += `<tr class="r-wd"><th>風</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.ws<0.3?'静穏':ARROW.replace('DEG',(r.wd+180)%360)+r.ws.toFixed(1)}<small>${r.ws<0.3?'':dirName(r.wd)}</small></td>`).join('')}</tr>`;
   html += `<tr class="r-wb"><th>WBGT</th>${cols.map((r,i)=>{const l=levelOf(r.wbgt);return `<td class="c" style="background:${l.bg};color:${l.fg}">${r.wbgt.toFixed(0)}</td>`;}).join('')}</tr>`;
   $('tbl').innerHTML = html;
