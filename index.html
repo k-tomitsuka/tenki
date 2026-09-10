@@ -15,7 +15,7 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:"BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
     font-feature-settings:"tnum";line-height:1.2}
-  body{display:grid;grid-template-rows:3.8vh 29.5vh 27.3vh 35vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
+  body{display:grid;grid-template-rows:3.8vh 29.5vh 25.9vh 36.4vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
   section{min-height:0;overflow:hidden}
 
   header{display:flex;justify-content:space-between;align-items:center}
@@ -48,7 +48,7 @@
   .wind .spd .u{font-size:min(3.4vh,1.9vw);font-weight:400;margin-left:.15em}
 
   /* グラフ（WBGT）＋ 気温の細帯 */
-  .chart{display:grid;grid-template-rows:auto 1fr 9.5vh;row-gap:.4vh;min-height:0}
+  .chart{display:grid;grid-template-rows:auto 1fr 9vh;row-gap:.4vh;min-height:0}
   .chart .k{font-size:2.9vh;line-height:1.15;white-space:nowrap;overflow:hidden}
   .chart .k b{color:var(--ink);font-weight:400}
   .chart svg{width:100%;height:100%;display:block}
@@ -70,6 +70,12 @@
   tr.r-num td small{font-size:2.4vh;font-weight:400;color:var(--mute)}
   tr.r-num td.z{color:#5c6c7c;font-weight:400}
   tr.r-num td.rain{color:#9fd0ff}
+  tr.r-pr td{height:6.2vh;font-size:4vh;font-weight:700}
+  tr.r-pr td .u{font-size:2.4vh;font-weight:400;color:var(--mute)}
+  tr.r-pr td small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);margin-top:.3vh;line-height:1.05}
+  tr.r-pr td small.hi{color:#9fd0ff}
+  tr.r-pr td.z{color:#5c6c7c;font-weight:400}
+  tr.r-pr td.rain{color:#9fd0ff}
   tr.r-wd td{height:6.4vh;font-size:3.4vh;font-weight:700}
   tr.r-wd svg{width:3.4vh;height:3.4vh;vertical-align:middle;margin-right:.2vw}
   tr.r-wd small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);margin-top:.3vh;line-height:1.05}
@@ -242,7 +248,8 @@ function consensusRows(h){
       if(ok) per.push(o);
     }
     const med = v => { const xs = per.filter(o=>o[v]!==null && o[v]!==undefined); return xs.length ? wmedian(xs.map(o=>o[v]), xs.map(o=>o.w)) : null; };
-    const temp = med('temperature_2m'), rh = med('relative_humidity_2m'), cloud = med('cloud_cover'), pr = med('precipitation'),
+    const wmean = v => { const xs = per.filter(o=>o[v]!==null && o[v]!==undefined); const tw = xs.reduce((t,o)=>t+o.w,0); return xs.length ? xs.reduce((t,o)=>t+o[v]*o.w,0)/tw : null; };
+    const temp = med('temperature_2m'), rh = med('relative_humidity_2m'), cloud = med('cloud_cover'), pr = wmean('precipitation'),   // 降水量は重み付き平均（見込み量）
           ws = med('wind_speed_10m'), sr = med('shortwave_radiation');
     // 風向：モデルの風ベクトルの重み付き平均
     let ux=0, uy=0; per.forEach(o=>{ if(o.wind_direction_10m!==null && o.wind_speed_10m!==null){ const a=o.wind_direction_10m*Math.PI/180; ux+=o.w*o.wind_speed_10m*Math.sin(a); uy+=o.w*o.wind_speed_10m*Math.cos(a);} });
@@ -260,7 +267,7 @@ function consensusRows(h){
 }
 
 /* 気象庁 地域時系列予報（3時間ごとの天気）。表と現在値の「天気」はこれを優先し、範囲外の時刻だけモデル合議で補う */
-let jmaWx = [];
+let jmaWx = [], jmaPop = [];
 async function fetchJmaWx(){
   try{
     const r = await getWithTimeout(`https://www.jma.go.jp/bosai/jmatile/data/wdist/VPFD/${CONFIG.jmaArea}.json`, 10000);
@@ -275,6 +282,7 @@ async function fetchJmaWx(){
     }).filter(x => x.cat && !isNaN(x.t0));
   }catch(e){ jmaWx = []; }
 }
+function popFor(row){ const t = row.t.getTime(); const hit = jmaPop.find(x => t >= x.t0 && t < x.t1); return hit ? hit.pop : null; }
 function catFor(row){                  // 公式予報があればそれを、無ければモデル合議
   const t = row.t.getTime();
   const hit = jmaWx.find(x => t >= x.t0 && t < x.t1);
@@ -291,6 +299,15 @@ async function fetchJma(){
     const day = new Date(ts.timeDefines[0]).getDate() === new Date().getDate() ? '今日' : '明日';
     const text = String(area.weathers[0]).replace(/[\s\u3000]+/g, '');
     $('sub').textContent = `${day}の天気：${text}`;
+    // 降水確率（6時間ごと）
+    const ps = j[0].timeSeries[1];
+    if(ps && Array.isArray(ps.timeDefines)){
+      const pa = ps.areas.find(a => a.area.code === CONFIG.jmaArea) || ps.areas[0];
+      jmaPop = ps.timeDefines.map((d,i)=>{
+        const t0 = new Date(d).getTime(), n = ps.timeDefines[i+1], t1 = n ? new Date(n).getTime() : t0 + 6*3600000;
+        const v = parseInt(pa.pops[i], 10); return {t0, t1, pop: isNaN(v) ? null : v};
+      }).filter(x => x.pop !== null && !isNaN(x.t0));
+    }
   }catch(e){ /* 取得できないときは既定の見出しのまま */ }
 }
 
@@ -350,7 +367,7 @@ function renderTable(rows, i0, now){
   html += `<tr class="r-wx"><th>天気</th>${cols.map((r,i)=>{const c=catFor(r);return `<td ${cls(i)}>${ICON[c]}<small>${catLabel(c, r.cloud)}</small></td>`;}).join('')}</tr>`;
   html += `<tr class="r-num"><th>気温</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.temp.toFixed(0)}<small>℃</small></td>`).join('')}</tr>`;
   html += `<tr class="r-num"><th>湿度</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.rh.toFixed(0)}<small>%</small></td>`).join('')}</tr>`;
-  html += `<tr class="r-num"><th>降水</th>${cols.map((r,i)=>{const z=r.pr<0.05;return `<td class="${i===0?'hl ':''}${z?'z':'rain'}">${z?'0':(r.pr<10?r.pr.toFixed(1):r.pr.toFixed(0))}<small>${z?'':'mm'}</small></td>`;}).join('')}</tr>`;
+  html += `<tr class="r-pr"><th>降水</th>${cols.map((r,i)=>{const z=r.pr<0.05, pop=popFor(r);return `<td class="${i===0?'hl ':''}${z?'z':'rain'}">${z?'0':(r.pr<10?r.pr.toFixed(1):r.pr.toFixed(0))}<span class="u">${z?'':'mm'}</span><small class="${pop!==null&&pop>=50?'hi':''}">${pop!==null?pop+'%':''}</small></td>`;}).join('')}</tr>`;
   html += `<tr class="r-wd"><th>風</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.ws<0.3?'静穏':ARROW.replace('DEG',(r.wd+180)%360)+r.ws.toFixed(1)}<small>${r.ws<0.3?'':dirName(r.wd)}</small></td>`).join('')}</tr>`;
   html += `<tr class="r-wb"><th>WBGT</th>${cols.map((r,i)=>{const l=levelOf(r.wbgt);return `<td class="c" style="background:${l.bg};color:${l.fg}">${r.wbgt.toFixed(0)}</td>`;}).join('')}</tr>`;
   $('tbl').innerHTML = html;
@@ -431,9 +448,8 @@ function renderAll(d){
 async function refresh(){
   try{
     lastData = await fetchWeather();
-    await fetchJmaWx();
+    await Promise.all([fetchJmaWx(), fetchJma()]);
     renderAll(lastData);
-    fetchJma();
     $('updated').textContent = fmtHM(new Date());
     $('error').textContent = '';
     if(retryTimer){ clearTimeout(retryTimer); retryTimer = null; }
