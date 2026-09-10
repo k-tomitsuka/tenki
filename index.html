@@ -48,13 +48,12 @@
   .wind .spd .u{font-size:min(3.4vh,1.9vw);font-weight:400;margin-left:.15em}
 
   /* グラフ（WBGT）＋ 気温の細帯 */
-  .chart{display:grid;grid-template-rows:auto 1fr 5.6vh;row-gap:.3vh;min-height:0}
+  .chart{display:grid;grid-template-rows:auto 1fr 9.5vh;row-gap:.4vh;min-height:0}
   .chart .k{font-size:2.9vh;line-height:1.15;white-space:nowrap;overflow:hidden}
   .chart .k b{color:var(--ink);font-weight:400}
   .chart svg{width:100%;height:100%;display:block}
   .chart text{font-family:inherit}
   .chip{display:inline-block;width:2.4vh;height:2.4vh;vertical-align:-.35vh;margin:0 .3vw 0 1vw;border-radius:.3vh}
-  .band{display:inline-block;width:3.2vh;height:2.4vh;vertical-align:-.35vh;margin:0 .3vw 0 .2vw;background:rgba(244,239,230,.28);border-radius:.3vh}
 
   /* 表 */
   .tbl{min-height:0}
@@ -116,9 +115,9 @@
 </section>
 
 <section class="chart">
-  <div class="k">これから12時間　<b>━ WBGT</b>　<span class="band"></span>帯＝予報の幅　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険　<b style="color:#9fd0ff">╌ 気温（下段）</b></div>
-  <svg id="chart"></svg>
-  <svg id="chartT"></svg>
+  <div class="k">これから12時間　<b>━ 気温</b>　　下段：WBGT　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</div>
+  <svg id="chartTemp"></svg>
+  <svg id="chartWbgt"></svg>
 </section>
 
 <section class="tbl"><table id="tbl"></table></section>
@@ -345,7 +344,7 @@ function renderTable(rows, i0, now){
   $('tbl').innerHTML = html;
 }
 
-/* ===== グラフ：表と同じ12時間・同じ列位置。上＝WBGT（帯＝危険度）、下＝気温（別目盛） ===== */
+/* ===== グラフ：表と同じ12時間・同じ列位置。上＝気温（主役）、下＝WBGT（帯＝危険度） ===== */
 function colX(svg, n){
   const sx = svg.getBoundingClientRect().left;
   const cells = [...document.querySelectorAll('#tbl tr.r-hd td')];
@@ -357,57 +356,56 @@ const vh = p => window.innerHeight * p / 100;
 
 function renderChart(rows, i0){
   const pts = rows.slice(i0, i0 + CONFIG.tableHours);
-  /* --- WBGT --- */
-  const svg = $('chart');
-  const W = svg.clientWidth || 1200, H = svg.clientHeight || 130;
+
+  /* --- 上：気温（主役） --- */
+  const svg = $('chartTemp');
+  const W = svg.clientWidth || 1200, H = svg.clientHeight || 160;
   svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
   const {xs, left, right} = colX(svg, pts.length);
-  const fsT = vh(2.0), fsV = vh(2.4), r = Math.max(5, H*0.05);
-  const m = {t: fsV + r + vh(0.5), b: Math.max(6, H*0.05)};
-  const ws = pts.flatMap(p=>[p.wbgt, p.wbLo, p.wbHi]);
-  let lo = Math.floor(Math.min(...ws) - 1), hi = Math.ceil(Math.max(...ws) + 1);
+  const fsT = vh(2.2), fsV = vh(2.8), r = Math.max(5, H*0.05);
+  const m = {t: fsV + r + vh(0.5), b: Math.max(6, H*0.06)};
+  const ts = pts.map(p=>p.temp).filter(v=>v!==null);
+  let lo = Math.floor(Math.min(...ts) - 1.5), hi = Math.ceil(Math.max(...ts) + 1.5);
   while(hi - lo < 6){ lo--; hi++; }
   const Y = v => m.t + (H - m.t - m.b) * (hi - v) / (hi - lo);
-  let s = '';
-  const edges = [lo, 21, 25, 28, 31, hi];
-  for(let k=0;k<5;k++){
-    const a = Math.max(lo, Math.min(hi, edges[k])), b = Math.max(lo, Math.min(hi, edges[k+1]));
-    if(b > a) s += `<rect x="${left}" y="${Y(b)}" width="${right-left}" height="${Y(a)-Y(b)}" fill="${LEVELS[k].bg}" opacity=".30"/>`;
+  let s = `<rect x="${left}" y="${m.t}" width="${right-left}" height="${H-m.t-m.b}" fill="#ffffff" opacity=".04"/>`;
+  const step = (hi - lo) > 12 ? 5 : 2;
+  for(let v = Math.ceil(lo/step)*step; v <= hi; v += step){
+    s += `<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="#ffffff" opacity=".14"/>`;
+    s += `<text x="${left-8}" y="${Y(v)+fsT*0.35}" font-size="${fsT}" fill="#b9c5d0" text-anchor="end">${v}℃</text>`;
   }
-  // 目盛：レベル境界（21/25/28/31）と上下端。境界に近い端の数字は省く
-  const bounds = [21,25,28,31].filter(v => v > lo && v < hi);
-  const ticks = [...bounds];
-  if(!bounds.some(v => Math.abs(Y(v) - Y(hi)) < fsT*1.2)) ticks.push(hi);
-  if(!bounds.some(v => Math.abs(Y(v) - Y(lo)) < fsT*1.2)) ticks.push(lo);
-  bounds.forEach(v => { s += `<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="#ffffff" opacity=".3"/>`; });
-  ticks.forEach(v => { s += `<text x="${left-8}" y="${Y(v)+fsT*0.35}" font-size="${fsT}" fill="#b9c5d0" text-anchor="end">${v}</text>`; });
   xs.forEach(x => { s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H-m.b}" stroke="#ffffff" opacity=".07"/>`; });
-  // モデル間のばらつき（最小〜最大）を薄い帯で
-  const cl = v => Math.min(hi, Math.max(lo, v));
-  s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(cl(p.wbHi)).toFixed(1)}`).join(' ')} ${[...pts].reverse().map((p,j)=>`L${xs[pts.length-1-j].toFixed(1)},${Y(cl(p.wbLo)).toFixed(1)}`).join(' ')} Z" fill="#f4efe6" opacity=".22"/>`;
-  s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(p.wbgt).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(3,H*0.035)}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(p.temp).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(3,H*0.03)}" stroke-linejoin="round" stroke-linecap="round"/>`;
   pts.forEach((p,i)=>{
-    const l = levelOf(p.wbgt);
-    s += `<circle cx="${xs[i]}" cy="${Y(p.wbgt)}" r="${r}" fill="${l.bg}" stroke="#f4efe6" stroke-width="${Math.max(2,H*0.014)}"/>`;
-    s += `<text x="${xs[i]}" y="${Y(p.wbgt)-r-vh(0.5)}" font-size="${fsV}" font-weight="700" fill="#f4efe6" text-anchor="middle">${p.wbgt.toFixed(0)}</text>`;
+    s += `<circle cx="${xs[i]}" cy="${Y(p.temp)}" r="${r}" fill="#f4efe6"/>`;
+    s += `<text x="${xs[i]}" y="${Y(p.temp)-r-vh(0.5)}" font-size="${fsV}" font-weight="700" fill="#f4efe6" text-anchor="middle">${Math.round(p.temp)}</text>`;
   });
   svg.innerHTML = s;
 
-  /* --- 気温（別目盛の細い帯） --- */
-  const sv2 = $('chartT');
-  const W2 = sv2.clientWidth || W, H2 = sv2.clientHeight || 60;
+  /* --- 下：WBGT（帯＝危険度、点の色＝その時刻の危険度。数値は表のWBGT行） --- */
+  const sv2 = $('chartWbgt');
+  const W2 = sv2.clientWidth || W, H2 = sv2.clientHeight || 100;
   sv2.setAttribute('viewBox', `0 0 ${W2} ${H2}`);
   const c2 = colX(sv2, pts.length);
-  const ts = pts.map(p=>p.temp);
-  let lo2 = Math.floor(Math.min(...ts)) - 1, hi2 = Math.ceil(Math.max(...ts)) + 1;
-  while(hi2 - lo2 < 4){ lo2--; hi2++; }
-  const pad2 = Math.max(4, H2*0.14), fs2 = vh(2.0);
-  const Y2 = v => pad2 + (H2 - 2*pad2) * (hi2 - v) / (hi2 - lo2);
-  let t = `<rect x="${c2.left}" y="0" width="${c2.right-c2.left}" height="${H2}" fill="#9fd0ff" opacity=".07"/>`;
-  t += `<text x="${c2.left-8}" y="${fs2}" font-size="${fs2}" fill="#9fd0ff" text-anchor="end">${hi2}℃</text>`;
-  t += `<text x="${c2.left-8}" y="${H2-2}" font-size="${fs2}" fill="#9fd0ff" text-anchor="end">${lo2}℃</text>`;
-  t += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${c2.xs[i].toFixed(1)},${Y2(p.temp).toFixed(1)}`).join(' ')}" fill="none" stroke="#9fd0ff" stroke-width="${Math.max(2,H2*0.05)}" stroke-dasharray="${H2*0.16} ${H2*0.11}" stroke-linejoin="round" stroke-linecap="round"/>`;
-  pts.forEach((p,i)=>{ t += `<circle cx="${c2.xs[i]}" cy="${Y2(p.temp)}" r="${Math.max(3,H2*0.07)}" fill="#9fd0ff"/>`; });
+  const ws = pts.map(p=>p.wbgt).filter(v=>v!==null);
+  let lo2 = Math.floor(Math.min(...ws) - 1), hi2 = Math.ceil(Math.max(...ws) + 1);
+  while(hi2 - lo2 < 6){ lo2--; hi2++; }
+  const r2 = Math.max(5, H2*0.09), m2 = {t: r2 + 2, b: r2 + 2}, fs2 = vh(2.0);
+  const Y2 = v => m2.t + (H2 - m2.t - m2.b) * (hi2 - v) / (hi2 - lo2);
+  let t = '';
+  const edges = [lo2, 21, 25, 28, 31, hi2];
+  for(let k=0;k<5;k++){
+    const a = Math.max(lo2, Math.min(hi2, edges[k])), b = Math.max(lo2, Math.min(hi2, edges[k+1]));
+    if(b > a) t += `<rect x="${c2.left}" y="${Y2(b)}" width="${c2.right-c2.left}" height="${Y2(a)-Y2(b)}" fill="${LEVELS[k].bg}" opacity=".38"/>`;
+  }
+  const bounds = [21,25,28,31].filter(v => v > lo2 && v < hi2);
+  bounds.forEach(v => {
+    t += `<line x1="${c2.left}" x2="${c2.right}" y1="${Y2(v)}" y2="${Y2(v)}" stroke="#ffffff" opacity=".35"/>`;
+    t += `<text x="${c2.left-8}" y="${Y2(v)+fs2*0.35}" font-size="${fs2}" fill="#b9c5d0" text-anchor="end">${v}</text>`;
+  });
+  if(!bounds.length){ t += `<text x="${c2.left-8}" y="${Y2((lo2+hi2)/2)+fs2*0.35}" font-size="${fs2}" fill="#b9c5d0" text-anchor="end">WBGT</text>`; }
+  t += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${c2.xs[i].toFixed(1)},${Y2(p.wbgt).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(2,H2*0.035)}" stroke-linejoin="round" stroke-linecap="round"/>`;
+  pts.forEach((p,i)=>{ const l = levelOf(p.wbgt); t += `<circle cx="${c2.xs[i]}" cy="${Y2(p.wbgt)}" r="${r2}" fill="${l.bg}" stroke="#f4efe6" stroke-width="${Math.max(2,H2*0.03)}"/>`; });
   sv2.innerHTML = t;
 }
 
@@ -443,7 +441,7 @@ let rerenderTimer = null;
 const rerender = () => { if(!lastData) return; clearTimeout(rerenderTimer); rerenderTimer = setTimeout(()=>renderAll(lastData), 150); };
 window.addEventListener('resize', rerender);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(rerender);   // Webフォント読込後に列位置を再計算
-if(window.ResizeObserver) new ResizeObserver(rerender).observe($('chart'));
+if(window.ResizeObserver) new ResizeObserver(rerender).observe($('chartTemp'));
 
 $('place').textContent = CONFIG.placeName;
 refresh();
