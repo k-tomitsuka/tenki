@@ -15,39 +15,41 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:"BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
     font-feature-settings:"tnum";line-height:1.2}
-  body{display:grid;grid-template-rows:3.8vh 28.2vh 26vh 34.8vh 2vh;gap:.8vh;padding:1vh 2.2vw}
+  body{display:grid;grid-template-rows:3.8vh 29.5vh 27.3vh 35vh;gap:.8vh;padding:1vh 1.6vw}
   section{min-height:0;overflow:hidden}
 
   header{display:flex;justify-content:space-between;align-items:center}
-  header h1{font-size:3vh;font-weight:400;color:var(--mute);white-space:nowrap}
+  header h1{font-size:3vh;font-weight:400;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;margin-right:1vw}
   header h1 b{color:var(--ink);font-weight:700}
-  #clock{font-size:3.8vh;font-weight:700;white-space:nowrap}
+  #clock{font-size:3.8vh;font-weight:700;white-space:nowrap;flex:none}
+  .status{font-size:2vh;color:#7f8e9c;white-space:nowrap;flex:none;margin-right:1.6vw}
+  .status .warn{color:#f2c400;margin-right:.8vw}
 
   /* 上段：遠目用の現在値 */
   .cur{display:grid;grid-template-columns:1.25fr .95fr .95fr 1.2fr 1.45fr;gap:0}
   .cur > div{padding:.5vh 1vw;border-left:1px solid var(--line);min-width:0;overflow:hidden}
   .cur > div:first-child{border-left:0}
   .k{font-size:min(2.6vh,1.5vw);color:var(--mute);white-space:nowrap}
-  .v{font-size:min(13.5vh,7.6vw);font-weight:700;line-height:1;margin-top:.3vh;white-space:nowrap;letter-spacing:-.02em}
+  .v{font-size:min(13.8vh,7.7vw);font-weight:700;line-height:1;margin-top:.3vh;white-space:nowrap;letter-spacing:-.02em}
   .v .u{font-size:min(4vh,2.25vw);font-weight:400;margin-left:.08em;letter-spacing:0}
   .s{font-size:min(2.6vh,1.46vw);color:var(--mute);margin-top:.7vh;white-space:nowrap}
   .wbgt{background:var(--lv-bg);color:var(--lv-fg);transition:background .6s}
   .wbgt .k{color:inherit;opacity:.85}
-  .wbgt .v{font-size:min(16.5vh,9.3vw)}
+  .wbgt .v{font-size:min(17vh,9.5vw)}
   .wbgt .v .dec{font-size:.55em;font-weight:700;letter-spacing:0}
-  .wbgt .lv{font-size:min(6.2vh,3.5vw);font-weight:700;margin-top:.3vh;white-space:nowrap}
+  .wbgt .lv{font-size:min(6.4vh,3.6vw);font-weight:700;margin-top:.3vh;white-space:nowrap}
   .cwx{display:flex;align-items:center;gap:.8vw;margin-top:1.8vh}
-  .cwx svg{width:min(12vh,6.75vw);height:min(12vh,6.75vw);flex:none}
-  .cwx .t{font-size:min(7vh,3.9vw);font-weight:700;line-height:1.1;white-space:nowrap}
+  .cwx svg{width:min(12.5vh,7vw);height:min(12.5vh,7vw);flex:none}
+  .cwx .t{font-size:min(7.2vh,4vw);font-weight:700;line-height:1.1;white-space:nowrap}
   .wind{display:flex;align-items:center;gap:.8vw;margin-top:1.8vh}
   .wind svg{width:min(9vh,5vw);height:min(9vh,5vw);flex:none;transition:transform .8s}
   .wind .dir{font-size:min(4.2vh,2.36vw);font-weight:700;white-space:nowrap}
-  .wind .spd{font-size:min(8vh,4.5vw);font-weight:700;white-space:nowrap;line-height:1}
+  .wind .spd{font-size:min(8.4vh,4.7vw);font-weight:700;white-space:nowrap;line-height:1}
   .wind .spd .u{font-size:min(3.4vh,1.9vw);font-weight:400;margin-left:.15em}
 
   /* グラフ（WBGT）＋ 気温の細帯 */
-  .chart{display:grid;grid-template-rows:auto 1fr 5.4vh;row-gap:.3vh;min-height:0}
-  .chart .k{font-size:2.7vh;line-height:1.15;white-space:nowrap;overflow:hidden}
+  .chart{display:grid;grid-template-rows:auto 1fr 5.6vh;row-gap:.3vh;min-height:0}
+  .chart .k{font-size:2.55vh;line-height:1.15;white-space:nowrap;overflow:hidden}
   .chart .k b{color:var(--ink);font-weight:400}
   .chart svg{width:100%;height:100%;display:block}
   .chart text{font-family:inherit}
@@ -57,31 +59,30 @@
   .tbl{min-height:0}
   table{width:100%;border-collapse:collapse;table-layout:fixed}
   th,td{text-align:center;vertical-align:middle;border-top:1px solid var(--line);padding:0 .2vw;overflow:hidden;white-space:nowrap;line-height:1}
-  th{color:var(--mute);font-weight:400;font-size:3vh;text-align:left;padding-left:.4vw;width:6.2vw}
-  tr.r-hd th,tr.r-hd td{border-top:0;font-size:3.1vh;color:var(--mute);height:3.1vh}
+  th{color:var(--mute);font-weight:400;font-size:3.1vh;text-align:left;padding-left:.4vw;width:6.2vw}
+  tr.r-hd th,tr.r-hd td{border-top:0;font-size:3.2vh;color:var(--mute);height:3.2vh}
   tr.r-hd td.hl{color:var(--ink);font-weight:700}
   td.hl{background:rgba(255,255,255,.07)}
-  tr.r-wx td{height:6vh}
-  tr.r-wx svg{width:3.6vh;height:3.6vh;display:block;margin:0 auto}
+  tr.r-wx td{height:6.2vh}
+  tr.r-wx svg{width:3.8vh;height:3.8vh;display:block;margin:0 auto}
   tr.r-wx small{display:block;font-size:2.3vh;color:var(--mute);margin-top:.2vh;line-height:1.05}
-  tr.r-num td{font-size:3.9vh;font-weight:700;height:4.2vh}
+  tr.r-num td{font-size:4vh;font-weight:700;height:4.3vh}
   tr.r-num td small{font-size:2.4vh;font-weight:400;color:var(--mute)}
   tr.r-num td.z{color:#5c6c7c;font-weight:400}
   tr.r-num td.rain{color:#9fd0ff}
-  tr.r-wd td{height:6.2vh;font-size:3.3vh;font-weight:700}
+  tr.r-wd td{height:6.4vh;font-size:3.4vh;font-weight:700}
   tr.r-wd svg{width:3.4vh;height:3.4vh;vertical-align:middle;margin-right:.2vw}
   tr.r-wd small{display:block;font-size:2.3vh;font-weight:400;color:var(--mute);margin-top:.3vh;line-height:1.05}
-  tr.r-wb td{font-size:4.5vh;font-weight:700;height:5vh}
+  tr.r-wb td{font-size:4.6vh;font-weight:700;height:5.3vh}
   tr.r-wb td.c{border-left:2px solid var(--bg)}
 
-  footer{display:flex;justify-content:space-between;gap:2vw;font-size:2.1vh;color:var(--mute);white-space:nowrap}
-  footer .warn{color:#f2c400}
 </style>
 </head>
 <body>
 
 <header>
-  <h1><b id="place">渋川市石原</b>　屋外の暑さと天気</h1>
+  <h1><b id="place">渋川市石原</b>　<span id="sub">屋外の暑さと天気</span></h1>
+  <div class="status"><span id="error" class="warn"></span>更新 <span id="updated">--:--</span>　次回 <span id="next">--:--</span></div>
   <div id="clock">--:--</div>
 </header>
 
@@ -114,17 +115,13 @@
 </section>
 
 <section class="chart">
-  <div class="k">これから12時間の推移（表と同じ時刻）　<b>━ WBGT</b>　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険　<b style="color:#9fd0ff">╌ 気温（下の細い帯・別目盛）</b></div>
+  <div class="k">これから12時間　<b>━ WBGT（5モデル合議・薄い帯＝モデル差）</b>　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険　<b style="color:#9fd0ff">╌ 気温（下段）</b></div>
   <svg id="chart"></svg>
   <svg id="chartT"></svg>
 </section>
 
 <section class="tbl"><table id="tbl"></table></section>
 
-<footer>
-  <div>データ：Open-Meteo（渋川市石原）　WBGTは環境省の算出式による屋外・日なたの推定値</div>
-  <div><span id="error" class="warn"></span>　最終更新 <span id="updated">--:--</span>　次回 <span id="next">--:--</span></div>
-</footer>
 
 <script>
 /* ===== 設定 ===== */
@@ -133,6 +130,10 @@ const CONFIG = {
   lat: 36.489, lon: 139.001,   // 渋川市石原付近
   refreshMinute: 5,            // 毎時この分に更新
   tableHours: 12,              // 表に出す時間数（現在から）
+  // 合議に使う数値予報モデル（Open-Meteo経由・すべて公開データ）。気象庁MSMは地域モデルなので重み2
+  models: ['jma_msm','ecmwf_ifs025','gfs_seamless','icon_seamless','ukmo_seamless'],
+  weights: {jma_msm: 2},
+  jmaOffice: '100000', jmaArea: '100010',   // 今日の天気概況の取得元（気象庁 群馬県／渋川市を含む区域）
   dailyReloadHour: 3
 };
 
@@ -162,6 +163,18 @@ const WX = {
   95:['雷雨','thunder'],96:['雷雨・ひょう','thunder'],99:['雷雨・ひょう','thunder']
 };
 const SHORT = {sun:'晴れ',partly:'晴/曇',cloud:'曇り',fog:'霧',rain:'雨',snow:'雪',thunder:'雷雨'};
+/* 天気の判定：降水・雪・雷はコード、それ以外は雲量（%）で判定（気象庁の「晴れ＝雲量2〜8」を、現場の見え方に寄せて雲量5割超は曇り寄りに） */
+function wxOf(code, cloud, precip){
+  if(code >= 95) return ['雷雨','thunder'];
+  if([71,73,75,77,85,86].includes(code)) return ['雪','snow'];
+  if([51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code) || (precip||0) >= 0.5) return ['雨','rain'];
+  if(code === 45 || code === 48) return ['霧','fog'];
+  if(cloud === null || cloud === undefined){ const w = WX[code] || ['曇り','cloud']; return [SHORT[w[1]], w[1]]; }
+  if(cloud <= 15) return ['快晴','sun'];
+  if(cloud <= 50) return ['晴れ','sun'];
+  if(cloud <= 80) return ['曇/晴','partly'];
+  return ['曇り','cloud'];
+}
 const ICON = {
   sun:'<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="20" fill="#f2c400"/><g stroke="#f2c400" stroke-width="6" stroke-linecap="round"><path d="M50 8v12M50 80v12M8 50h12M80 50h12M20 20l9 9M71 71l9 9M20 80l9-9M71 29l9-9"/></g></svg>',
   partly:'<svg viewBox="0 0 100 100"><circle cx="38" cy="38" r="16" fill="#f2c400"/><path d="M34 84h44a14 14 0 0 0 2-28 20 20 0 0 0-38-6 17 17 0 0 0-8 34z" fill="#d7dde3"/></svg>',
@@ -196,32 +209,74 @@ function tickClock(){
 setInterval(tickClock, 1000); tickClock();
 
 /* ===== 気象データ（Open-Meteo） ===== */
+const HVARS = ['temperature_2m','relative_humidity_2m','weather_code','cloud_cover','precipitation','wind_speed_10m','wind_direction_10m','shortwave_radiation'];
 async function fetchWeather(){
   const q = new URLSearchParams({
-    latitude: CONFIG.lat, longitude: CONFIG.lon,
-    current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,shortwave_radiation',
-    hourly: 'temperature_2m,relative_humidity_2m,weather_code,precipitation,wind_speed_10m,wind_direction_10m,shortwave_radiation',
-    daily: 'temperature_2m_max,temperature_2m_min',
+    latitude: CONFIG.lat, longitude: CONFIG.lon, hourly: HVARS.join(','), models: CONFIG.models.join(','),
     timezone: 'Asia/Tokyo', wind_speed_unit: 'ms', forecast_days: 3
   });
-  const r = await getWithTimeout('https://api.open-meteo.com/v1/forecast?'+q, 15000);
+  const r = await getWithTimeout('https://api.open-meteo.com/v1/forecast?'+q, 20000);
   return r.json();
 }
 
-/* 時別配列 → 扁平な行データ */
-function hourlyRows(h){
-  return h.time.map((s,i)=>({
-    t: parseLocal(s), temp: h.temperature_2m[i], rh: h.relative_humidity_2m[i], code: h.weather_code[i],
-    ws: h.wind_speed_10m[i], wd: h.wind_direction_10m[i], pr: h.precipitation[i],
-    wbgt: wbgtEstimate(h.temperature_2m[i], h.relative_humidity_2m[i], h.shortwave_radiation[i], h.wind_speed_10m[i])
-  }));
+/* ===== 合議（アンサンブル）：モデルごとの値を重み付き中央値・多数決でまとめる ===== */
+function wmedian(vals, ws){                       // 重み付き中央値
+  const a = vals.map((v,i)=>[v, ws[i]]).sort((x,y)=>x[0]-y[0]);
+  const total = a.reduce((t,x)=>t+x[1],0); let acc = 0;
+  for(const [v,w] of a){ acc += w; if(acc >= total/2) return v; }
+  return a[a.length-1][0];
+}
+function wxCat(code, cloud, precip){ return wxOf(code, cloud, precip)[1]; }   // 天気の区分（sun/partly/cloud/fog/rain/snow/thunder）
+
+function consensusRows(h){
+  const models = CONFIG.models, W = m => CONFIG.weights[m] || 1;
+  const get = (v, m, i) => { const arr = h[`${v}_${m}`] || (models.length===1 ? h[v] : null); return arr ? arr[i] : null; };
+  return h.time.map((s,i)=>{
+    const per = [];                               // モデル別の値
+    for(const m of models){
+      const o = {m, w: W(m)}; let ok = false;
+      for(const v of HVARS){ const x = get(v,m,i); o[v] = x; if(x!==null && x!==undefined) ok = true; }
+      if(ok) per.push(o);
+    }
+    const med = v => { const xs = per.filter(o=>o[v]!==null && o[v]!==undefined); return xs.length ? wmedian(xs.map(o=>o[v]), xs.map(o=>o.w)) : null; };
+    const temp = med('temperature_2m'), rh = med('relative_humidity_2m'), cloud = med('cloud_cover'), pr = med('precipitation'),
+          ws = med('wind_speed_10m'), sr = med('shortwave_radiation');
+    // 風向：モデルの風ベクトルの重み付き平均
+    let ux=0, uy=0; per.forEach(o=>{ if(o.wind_direction_10m!==null && o.wind_speed_10m!==null){ const a=o.wind_direction_10m*Math.PI/180; ux+=o.w*o.wind_speed_10m*Math.sin(a); uy+=o.w*o.wind_speed_10m*Math.cos(a);} });
+    const wd = (Math.atan2(ux, uy)*180/Math.PI + 360) % 360;
+    // 天気：区分の多数決（同数なら重みの大きい気象庁MSM側）
+    const votes = {}; per.forEach(o=>{ if(o.weather_code!==null){ const c = wxCat(o.weather_code, o.cloud_cover, o.precipitation); votes[c] = (votes[c]||0) + o.w; } });
+    const totalW = Object.values(votes).reduce((t,x)=>t+x,0);
+    const cat = Object.entries(votes).sort((x,y)=>y[1]-x[1])[0]?.[0] || 'cloud';
+    // WBGT：モデルごとに計算し、中央値と幅
+    const wb = per.filter(o=>o.temperature_2m!==null && o.relative_humidity_2m!==null).map(o=>({v: wbgtEstimate(o.temperature_2m,o.relative_humidity_2m,o.shortwave_radiation ?? sr ?? 0,o.wind_speed_10m ?? ws ?? 0), w:o.w}));
+    const wbgt = wb.length ? wmedian(wb.map(x=>x.v), wb.map(x=>x.w)) : (temp!==null ? wbgtEstimate(temp,rh,sr,ws) : null);
+    return { t: parseLocal(s), temp, rh, cloud, pr, ws, wd, sr, cat, agree: totalW ? (votes[cat]/totalW) : 1,
+             wbgt, wbLo: wb.length ? Math.min(...wb.map(x=>x.v)) : wbgt, wbHi: wb.length ? Math.max(...wb.map(x=>x.v)) : wbgt, n: per.length };
+  });
 }
 
-/* ===== 現在値 ===== */
-function renderNow(d){
-  const c = d.current;
+/* 今日の天気概況（気象庁の府県予報文）を見出しに表示。区域名は出さない */
+async function fetchJma(){
+  try{
+    const r = await getWithTimeout(`https://www.jma.go.jp/bosai/forecast/data/forecast/${CONFIG.jmaOffice}.json`, 10000);
+    const j = await r.json();
+    const ts = j[0].timeSeries[0];
+    const area = ts.areas.find(a => a.area.code === CONFIG.jmaArea) || ts.areas[0];
+    const day = new Date(ts.timeDefines[0]).getDate() === new Date().getDate() ? '今日' : '明日';
+    const text = String(area.weathers[0]).replace(/[\s\u3000]+/g, '');
+    $('sub').textContent = `${day}の天気：${text}`;
+  }catch(e){ /* 取得できないときは既定の見出しのまま */ }
+}
+
+/* ===== 現在値：合議結果の「今の時刻」の値（時別値を分単位で補間） ===== */
+function renderNow(rows, i0, now){
+  const a = rows[i0], b = rows[Math.min(i0+1, rows.length-1)];
+  const f = Math.min(1, Math.max(0, (now - a.t) / 3600000));
+  const lerp = (x,y) => (x===null||y===null) ? (x ?? y) : x + (y-x)*f;
+  const temp = lerp(a.temp,b.temp), rh = lerp(a.rh,b.rh), ws = lerp(a.ws,b.ws), sr = lerp(a.sr,b.sr);
   const test = new URLSearchParams(location.search).get('test');          // ?test=29.5 で色の確認
-  const wbgt = test !== null ? parseFloat(test) : wbgtEstimate(c.temperature_2m, c.relative_humidity_2m, c.shortwave_radiation, c.wind_speed_10m);
+  const wbgt = test !== null ? parseFloat(test) : lerp(a.wbgt, b.wbgt);
   const lv = levelOf(wbgt);
   document.documentElement.style.setProperty('--lv-bg', lv.bg);
   document.documentElement.style.setProperty('--lv-fg', lv.fg);
@@ -229,23 +284,27 @@ function renderNow(d){
   $('wbgtDec').textContent = '.' + Math.abs(Math.round(wbgt*10)) % 10;
   $('lvName').textContent = lv.name;
 
-  $('temp').textContent = Math.round(c.temperature_2m);
-  $('tempSub').textContent = `最高${Math.round(d.daily.temperature_2m_max[0])}℃ 最低${Math.round(d.daily.temperature_2m_min[0])}℃`;
-  $('rh').textContent = Math.round(c.relative_humidity_2m);
-  $('rh').parentElement.style.fontSize = Math.round(c.relative_humidity_2m) >= 100 ? 'min(9.5vh,5.3vw)' : '';
+  const today = rows.filter(r => r.t.getDate() === now.getDate() && r.temp!==null).map(r=>r.temp);
+  $('temp').textContent = Math.round(temp);
+  $('tempSub').textContent = today.length ? `最高${Math.round(Math.max(...today))}℃ 最低${Math.round(Math.min(...today))}℃` : '';
+  $('rh').textContent = Math.round(rh);
+  $('rh').parentElement.style.fontSize = Math.round(rh) >= 100 ? 'min(9.5vh,5.3vw)' : '';
 
-  const wx = WX[c.weather_code] || ['—','cloud'];
-  $('wxIcon').innerHTML = ICON[wx[1]];
-  $('wxText').textContent = SHORT[wx[1]];
+  const cur = f < 0.5 ? a : b;
+  $('wxIcon').innerHTML = ICON[cur.cat];
+  $('wxText').textContent = catLabel(cur.cat, cur.cloud);
 
-  const spd = c.wind_speed_10m;
-  if(spd < 0.3){ $('windDir').textContent = '静穏'; $('windArrow').style.opacity = .25; }
+  if(ws < 0.3){ $('windDir').textContent = '静穏'; $('windArrow').style.opacity = .25; }
   else{
-    $('windDir').textContent = dirName(c.wind_direction_10m) + 'の風';
-    $('windArrow').style.transform = `rotate(${(c.wind_direction_10m + 180) % 360}deg)`;
+    $('windDir').textContent = dirName(cur.wd) + 'の風';
+    $('windArrow').style.transform = `rotate(${(cur.wd + 180) % 360}deg)`;
     $('windArrow').style.opacity = 1;
   }
-  $('windSpd').textContent = spd.toFixed(1);
+  $('windSpd').textContent = ws.toFixed(1);
+}
+function catLabel(cat, cloud){
+  if(cat==='sun') return (cloud!==null && cloud <= 15) ? '快晴' : '晴れ';
+  return {partly:'曇/晴', cloud:'曇り', fog:'霧', rain:'雨', snow:'雪', thunder:'雷雨'}[cat] || '—';
 }
 
 /* ===== 表：現在から12時間 ===== */
@@ -254,7 +313,7 @@ function renderTable(rows, i0, now){
   const cls = i => i===0 ? 'class="hl"' : '';
   let html = '';
   html += `<tr class="r-hd"><th>時刻</th>${cols.map((r,i)=>`<td ${cls(i)}>${i===0?'現在':hourLabel(r.t, now)}</td>`).join('')}</tr>`;
-  html += `<tr class="r-wx"><th>天気</th>${cols.map((r,i)=>{const w=WX[r.code]||['—','cloud'];return `<td ${cls(i)}>${ICON[w[1]]}<small>${SHORT[w[1]]}</small></td>`;}).join('')}</tr>`;
+  html += `<tr class="r-wx"><th>天気</th>${cols.map((r,i)=>`<td ${cls(i)}>${ICON[r.cat]}<small>${catLabel(r.cat, r.cloud)}</small></td>`).join('')}</tr>`;
   html += `<tr class="r-num"><th>気温</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.temp.toFixed(0)}<small>℃</small></td>`).join('')}</tr>`;
   html += `<tr class="r-num"><th>湿度</th>${cols.map((r,i)=>`<td ${cls(i)}>${r.rh.toFixed(0)}<small>%</small></td>`).join('')}</tr>`;
   html += `<tr class="r-num"><th>降水</th>${cols.map((r,i)=>{const z=r.pr<0.05;return `<td class="${i===0?'hl ':''}${z?'z':'rain'}">${z?'0':(r.pr<10?r.pr.toFixed(1):r.pr.toFixed(0))}<small>${z?'':'mm'}</small></td>`;}).join('')}</tr>`;
@@ -282,8 +341,8 @@ function renderChart(rows, i0){
   const {xs, left, right} = colX(svg, pts.length);
   const fsT = vh(2.0), fsV = vh(2.4), r = Math.max(5, H*0.05);
   const m = {t: fsV + r + vh(0.5), b: Math.max(6, H*0.05)};
-  const ws = pts.map(p=>p.wbgt);
-  let lo = Math.floor(Math.min(...ws) - 1.5), hi = Math.ceil(Math.max(...ws) + 1.5);
+  const ws = pts.flatMap(p=>[p.wbgt, p.wbLo, p.wbHi]);
+  let lo = Math.floor(Math.min(...ws) - 1), hi = Math.ceil(Math.max(...ws) + 1);
   while(hi - lo < 6){ lo--; hi++; }
   const Y = v => m.t + (H - m.t - m.b) * (hi - v) / (hi - lo);
   let s = '';
@@ -300,6 +359,9 @@ function renderChart(rows, i0){
   bounds.forEach(v => { s += `<line x1="${left}" x2="${right}" y1="${Y(v)}" y2="${Y(v)}" stroke="#ffffff" opacity=".3"/>`; });
   ticks.forEach(v => { s += `<text x="${left-8}" y="${Y(v)+fsT*0.35}" font-size="${fsT}" fill="#b9c5d0" text-anchor="end">${v}</text>`; });
   xs.forEach(x => { s += `<line x1="${x}" x2="${x}" y1="${m.t}" y2="${H-m.b}" stroke="#ffffff" opacity=".07"/>`; });
+  // モデル間のばらつき（最小〜最大）を薄い帯で
+  const cl = v => Math.min(hi, Math.max(lo, v));
+  s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(cl(p.wbHi)).toFixed(1)}`).join(' ')} ${[...pts].reverse().map((p,j)=>`L${xs[pts.length-1-j].toFixed(1)},${Y(cl(p.wbLo)).toFixed(1)}`).join(' ')} Z" fill="#f4efe6" opacity=".16"/>`;
   s += `<path d="${pts.map((p,i)=>`${i?'L':'M'}${xs[i].toFixed(1)},${Y(p.wbgt).toFixed(1)}`).join(' ')}" fill="none" stroke="#f4efe6" stroke-width="${Math.max(3,H*0.035)}" stroke-linejoin="round" stroke-linecap="round"/>`;
   pts.forEach((p,i)=>{
     const l = levelOf(p.wbgt);
@@ -329,19 +391,20 @@ function renderChart(rows, i0){
 /* ===== 更新スケジュール ===== */
 let lastData = null, retryTimer = null;
 function renderAll(d){
-  const rows = hourlyRows(d.hourly), now = new Date();
+  const rows = consensusRows(d.hourly), now = new Date();
   let i0 = rows.findIndex(r => r.t.getTime() > now.getTime()) - 1; if(i0 < 0) i0 = 0;
-  renderNow(d); renderTable(rows, i0, now); renderChart(rows, i0);
+  renderTable(rows, i0, now); renderChart(rows, i0); renderNow(rows, i0, now);
 }
 async function refresh(){
   try{
     lastData = await fetchWeather();
     renderAll(lastData);
+    fetchJma();
     $('updated').textContent = fmtHM(new Date());
     $('error').textContent = '';
     if(retryTimer){ clearTimeout(retryTimer); retryTimer = null; }
   }catch(e){
-    $('error').textContent = `更新できませんでした（${fmtHM(new Date())}）前回の値を表示中・10分後に再試行`;
+    $('error').textContent = `更新失敗 ${fmtHM(new Date())}（前回値を表示・10分後再試行）`;
     if(!retryTimer) retryTimer = setTimeout(()=>{ retryTimer=null; refresh(); }, 10*60*1000);
   }
 }
