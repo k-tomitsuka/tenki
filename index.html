@@ -9,7 +9,7 @@
 <style>
   :root{
     --bg:#1c2733; --ink:#f4efe6; --mute:#b9c5d0; --line:#34455a;
-    --lv-bg:#2b6fd6; --lv-fg:#ffffff;
+    --lv-bg:#1d55c2; --lv-fg:#ffffff;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
@@ -62,7 +62,7 @@
   th{color:var(--mute);font-weight:400;font-size:3.1vh;text-align:left;padding-left:.4vw;width:6.2vw}
   tr.r-hd th,tr.r-hd td{border-top:0;font-size:3.2vh;color:var(--mute);height:3vh}
   tr.r-hd td.hl{color:var(--ink);font-weight:700}
-  td.hl{background:rgba(255,255,255,.07)}
+  td.hl{background:rgba(255,255,255,.14)}
   tr.r-wx td{height:5.8vh}
   tr.r-wx svg{width:3.8vh;height:3.8vh;display:block;margin:0 auto}
   tr.r-wx small{display:block;font-size:2.3vh;color:var(--mute);margin-top:.2vh;line-height:1.05}
@@ -118,7 +118,7 @@
 </section>
 
 <section class="chart">
-  <div class="k">これから12時間の気温　　●の色＝その時刻のWBGT危険度　<span class="chip" style="background:#2b6fd6"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</div>
+  <div class="k">これから12時間の気温　　●の色＝その時刻のWBGT危険度　<span class="chip" style="background:#1d55c2"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</div>
   <svg id="chartTemp"></svg>
 </section>
 
@@ -136,7 +136,7 @@ const CONFIG = {
   models: ['jma_msm','ecmwf_ifs025','gfs_seamless','icon_seamless','ukmo_seamless'],
   weights: {jma_msm: 2},
   // 背景色：今の天気に連動（暗めの色調。WBGTの5色と混同しないよう彩度は抑えめ）。夜間はさらに暗く
-  skyColors: {sun:'#8a5a1a', partly:'#5c4b2e', cloud:'#4a5058', fog:'#55616b', rain:'#16305e', snow:'#56708a', thunder:'#3b2a5e'},
+  skyColors: {sun:'#74601f', partly:'#5c4b2e', cloud:'#4a5058', fog:'#55616b', rain:'#16305e', snow:'#56708a', thunder:'#3b2a5e'},
   skyNight: [18, 5],           // この時刻の間は夜扱い（背景を暗くする）
   dimNight: [22, 5], dimLevel: 0.75,   // この時刻の間は画面全体を減光（1で無効）
   jmaOffice: '100000', jmaArea: '100010',   // 気象庁 府県予報（今日の概況）と地域時系列予報（3時間ごとの天気）。渋川市を含む区域
@@ -145,7 +145,7 @@ const CONFIG = {
 
 /* ===== 環境省の暑さ指数レベル ===== */
 const LEVELS = [
-  {max:21,       name:'ほぼ安全',  action:'適時に水分補給',   bg:'#2b6fd6', fg:'#ffffff'},
+  {max:21,       name:'ほぼ安全',  action:'適時に水分補給',   bg:'#1d55c2', fg:'#ffffff'},
   {max:25,       name:'注意',      action:'積極的に水分補給', bg:'#2aa7c9', fg:'#0d1b24'},
   {max:28,       name:'警戒',      action:'積極的に休息',     bg:'#e8c22e', fg:'#1c1a12'},
   {max:31,       name:'厳重警戒',  action:'激しい運動は中止', bg:'#ef8b1c', fg:'#1c1409'},
@@ -313,12 +313,10 @@ async function fetchJma(){
 
 /* ===== 現在値：合議結果の「今の時刻」の値（時別値を分単位で補間） ===== */
 function renderNow(rows, i0, now){
-  const a = rows[i0], b = rows[Math.min(i0+1, rows.length-1)];
-  const f = Math.min(1, Math.max(0, (now - a.t) / 3600000));
-  const lerp = (x,y) => (x===null||y===null) ? (x ?? y) : x + (y-x)*f;
-  const temp = lerp(a.temp,b.temp), rh = lerp(a.rh,b.rh), ws = lerp(a.ws,b.ws), sr = lerp(a.sr,b.sr);
+  const a = rows[i0];                                                       // 表の「現在」列と同じ値を使う
+  const temp = a.temp, rh = a.rh, ws = a.ws;
   const test = new URLSearchParams(location.search).get('test');          // ?test=29.5 で色の確認
-  const wbgt = test !== null ? parseFloat(test) : lerp(a.wbgt, b.wbgt);
+  const wbgt = test !== null ? parseFloat(test) : a.wbgt;
   const lv = levelOf(wbgt);
   document.documentElement.style.setProperty('--lv-bg', lv.bg);
   document.documentElement.style.setProperty('--lv-fg', lv.fg);
@@ -333,7 +331,7 @@ function renderNow(rows, i0, now){
   $('rh').parentElement.style.fontSize = Math.round(rh) >= 100 ? 'min(9.5vh,5.3vw)' : '';
 
   const forced = new URLSearchParams(location.search).get('wx');      // ?wx=rain などで天気表示・背景色の確認
-  const cur = f < 0.5 ? a : b, cc = (forced && ICON[forced]) ? forced : catFor(cur);
+  const cur = a, cc = (forced && ICON[forced]) ? forced : catFor(cur);
   $('wxIcon').innerHTML = ICON[cc];
   $('wxText').textContent = catLabel(cc, cur.cloud);
   setSky(cc, now);
