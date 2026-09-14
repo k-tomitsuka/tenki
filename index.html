@@ -15,10 +15,10 @@
   html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
     font-family:"BIZ UDPGothic","Noto Sans JP","Noto Sans CJK JP","Hiragino Sans","Yu Gothic",sans-serif;
     font-feature-settings:"tnum";line-height:1.2}
-  body{display:grid;grid-template-rows:3.8vh 29.5vh 25.5vh 36.8vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
+  body{width:min(100vw,calc(100vh * 16 / 9));display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:3.8vh 29.5vh 25.5vh 36.8vh;gap:.8vh;padding:1vh 1.6vw;background:linear-gradient(180deg,var(--sky,var(--bg)) 0%,var(--sky,var(--bg)) 26%,var(--bg) 58%);transition:background 1s}
   section{min-height:0;overflow:hidden}
 
-  header{display:flex;justify-content:space-between;align-items:center}
+  header{display:flex;justify-content:space-between;align-items:center;min-width:0;overflow:hidden}
   header h1{font-size:3vh;font-weight:400;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;margin-right:1vw}
   header h1 b{color:var(--ink);font-weight:700}
   #clock{font-size:3.8vh;font-weight:700;white-space:nowrap;flex:none}
@@ -299,6 +299,9 @@ async function fetchJma(){
     const day = new Date(ts.timeDefines[0]).getDate() === new Date().getDate() ? '今日' : '明日';
     const text = String(area.weathers[0]).replace(/[\s\u3000]+/g, ' ');
     $('sub').textContent = `${day}の天気：${text}`;
+    // 長文なら見出しの文字を少し小さくして収める（下限2.2vh）
+    const sub = $('sub'), h1 = sub.parentElement; sub.style.fontSize = '';
+    for(let fs = 3.0; h1.scrollWidth > h1.clientWidth && fs > 2.2; fs -= 0.1) sub.style.fontSize = fs.toFixed(1) + 'vh';
     // 降水確率（6時間ごと）
     const ps = j[0].timeSeries[1];
     if(ps && Array.isArray(ps.timeDefines)){
