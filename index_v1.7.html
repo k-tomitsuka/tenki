@@ -92,10 +92,7 @@
   tr.r-num td.z{color:#5c6c7c;font-weight:400}
   tr.r-num td.rain{color:#9fd0ff}
   tr.r-num td .rng{font-size:3.1vh}
-  tr.pr td{position:relative}
-  tr.pr td.rc{border-left:2px solid var(--page, var(--bg))}                 /* 1mm以上：気象庁レーダーと同じ色の帯 */
-  tr.pr td .obs{position:absolute;top:.25vh;right:.35vw;font-size:1.7vh;font-weight:400;line-height:1;color:inherit;opacity:.8}
-  tr.pr th .u{font-size:2vh;margin-left:.2vw;color:var(--mute)}
+  tr.r-num td .obs{font-size:2vh;font-weight:400;color:var(--mute);margin-left:.2vw}
   tr.r-num td.nor{font-size:2.6vh;font-weight:400;color:rgba(255,255,255,.45)}
   tr.r-num td .umb svg{width:4.2vh;height:4.2vh;vertical-align:middle;margin-top:-.3vh}
   tr.r-num td.na{color:rgba(255,255,255,.45);font-weight:400}
@@ -138,7 +135,6 @@
   <div>
     <div class="k">天気</div>
     <div class="cwx"><span id="wxIcon"></span><div class="t" id="wxText">--</div></div>
-    <div class="s" id="wxSrc"></div>
   </div>
   <div>
     <div class="k">風（矢印＝吹いていく向き）</div>
@@ -167,7 +163,7 @@
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.8',
+  version: '1.7',
   radar: true,                    // 「現在」の雨を気象庁レーダー（高解像度降水ナウキャスト）の観測で表示
   rainForecast: true,             // 降水の行を気象庁「今後の雨」（降水短時間予報・1km四方）で表示
   tileZoom: 10,                   // 気象庁の地図タイルの拡大段階（10＝約120m/画素）
@@ -530,15 +526,14 @@ async function fetchRainForecast(){
 }
 /* 1時間ごとの雨：現在はレーダー観測 → 気象庁「今後の雨」 → 予報モデル の順に採用 */
 function rainInfo(row, isNow){
-  const fromBin = (b, src) => b < 0 ? {level:'none', text:'', src} : b === 0 ? {level:'light', text:'小雨', src} : {level:'rain', text:RAIN_BINS[b][3], bin:b, src};
+  const fromBin = (b, src) => b < 0 ? {level:'none', text:'', src} : b === 0 ? {level:'light', text:'小雨', src} : {level:'rain', text:RAIN_BINS[b][3], range:true, src};
   const q = new URLSearchParams(location.search).get('radar');           // ?radar=0 で「現在 小雨（観測）」の表示確認
   if(isNow && q !== null) return fromBin(parseInt(q, 10), 'radar');
   if(isNow && radarNow && Date.now() - radarNow.t < 20 * 60000) return fromBin(radarNow.bin, 'radar');
   const T = row.t.getTime();
   if(rainFc[T] !== undefined) return fromBin(rainFc[T], 'jma');
   if(row.pr === null || row.pr === undefined) return {level:'na', text:'—', src:'model'};
-  if(row.pr >= 1){ const v = row.pr, b = v >= 80 ? 7 : v >= 50 ? 6 : v >= 30 ? 5 : v >= 20 ? 4 : v >= 10 ? 3 : v >= 5 ? 2 : 1;
-    return {level:'rain', text: v < 10 ? v.toFixed(1) : v.toFixed(0), bin:b, src:'model'}; }
+  if(row.pr >= 1) return {level:'rain', text: row.pr < 10 ? row.pr.toFixed(1) : row.pr.toFixed(0), src:'model'};
   if(row.pr >= 0.1 || row.share >= 0.34) return {level:'light', text:'小雨', src:'model'};    // 弱い雨の気配も「小雨」として出す
   return {level:'none', text:'', src:'model'};
 }
@@ -588,8 +583,6 @@ function renderNow(rows, i0, now){
   const night = isNightRow(cur);
   $('wxIcon').innerHTML = iconFor(cc, night);
   $('wxText').textContent = catLabel(cc, cur.cloud);
-  const riNow = rainInfo(cur, true);
-  $('wxSrc').textContent = (riNow.src === 'radar' && riNow.level !== 'none') ? 'レーダーで観測中' : '';   // 今降っていることをレーダーで確認できたとき
   setSky(cc, night);
 
   if(ws < 0.3){ $('windDir').textContent = '静穏'; $('windArrow').style.opacity = .25; }
@@ -636,18 +629,13 @@ function renderTable(rows, i0, now){
   html += `<tr class="r-num"><th>湿度</th>${cols.map((r,i)=>`<td ${tc(i, Math.round(r.rh)<=A.rhLow?'warn':'')}>${Math.round(r.rh)}<small>%</small></td>`).join('')}</tr>`;
   const rains = cols.map((r,i) => rainInfo(r, i===0)), cats = cols.map((r,i) => catWithRain(r, i===0));
   if(rains.every(x => x.level === 'none') && !cats.includes('chance')){
-    html += `<tr class="r-num pr"><th>降水<span class="u">mm</span></th><td class="hl z"></td><td class="nor" colspan="${cols.length-1}">この先12時間 雨の予想なし</td></tr>`;
+    html += `<tr class="r-num pr"><th>降水</th><td class="hl z"></td><td class="nor" colspan="${cols.length-1}">この先12時間 雨の予想なし</td></tr>`;
   }else{
-    html += `<tr class="r-num pr"><th>降水<span class="u">mm</span></th>${rains.map((x,i) => {
-      const obs = '';
-      if(x.level === 'rain'){                                              // 1mm以上：色が濃いほど強い雨（気象庁レーダーと同じ配色）
-        const [r, g, b] = RAIN_BINS[x.bin], fg = [2,3,6,7].includes(x.bin) ? '#ffffff' : '#1c2733';
-        const fs = x.text.length >= 5 ? 'font-size:3.2vh;' : x.text.length === 4 ? 'font-size:3.5vh;' : '';
-        return `<td class="rc" style="background:rgb(${r},${g},${b});color:${fg};${fs}">${x.text}${obs}</td>`;
-      }
-      const chance = x.level === 'none' && cats[i] === 'chance';          // 地域の予報は雨、この地点の雨雲予想はなし→傘のマーク
+    html += `<tr class="r-num pr"><th>降水</th>${rains.map((x,i) => {
+      const chance = x.level === 'none' && cats[i] === 'chance';          // 地域の予報は雨、この地点の雨雲予想はなし
       const cl = (i===0 ? 'hl ' : '') + (chance ? 'rain' : x.level==='na' ? 'na' : x.level==='none' ? 'z' : 'rain');
-      return `<td class="${cl}">${chance ? `<span class="umb">${ICON.umbrella}</span>` : x.text}${obs}</td>`;
+      const body = chance ? `<span class="umb">${ICON.umbrella}</span>` : x.level==='rain' ? (x.range ? `<span class="rng">${x.text}</span>` : x.text) + '<small>mm</small>' : x.text;   // 雨の可能性は傘のマーク
+      return `<td class="${cl}">${body}${i===0 && x.src==='radar' && x.level!=='none' ? '<span class="obs">観測</span>' : ''}</td>`;
     }).join('')}</tr>`;
   }
   // 降水確率：気象庁の6時間区分ごとに1セル（結合表示）
