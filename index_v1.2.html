@@ -23,7 +23,7 @@
   header h1{font-size:3vh;font-weight:400;color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1;margin-right:1vw}
   header h1 b{color:var(--ink);font-weight:700}
   #clock{font-size:3.8vh;font-weight:700;white-space:nowrap;flex:none}
-  .status{font-size:2vh;color:rgba(255,255,255,.55);white-space:nowrap;flex:none;margin-right:1.6vw}
+  .status{font-size:2vh;color:#7f8e9c;white-space:nowrap;flex:none;margin-right:1.6vw}
   .status .warn{color:#f2c400;margin-right:.8vw}
   /* 気象庁の警報・注意報（渋川市に発表中のもの） */
   .wchip{display:inline-block;padding:.15vh .6vw;margin-right:.5vw;border-radius:.5vh;font-size:2.6vh;font-weight:700;line-height:1.3;vertical-align:.15vh}
@@ -42,8 +42,8 @@
   .s{font-size:min(2.6vh,1.46vw);color:var(--mute);margin-top:.7vh;white-space:nowrap}
   .al{display:inline-block;margin-top:.6vh;padding:.3vh 1vw;border-radius:.6vh;font-size:min(3.2vh,1.8vw);font-weight:700;white-space:nowrap;background:#f2c400;color:#1c1a12;max-width:100%;overflow:hidden;text-overflow:ellipsis}
     .al:empty{display:none}
-  td.warn{color:#f2c400;text-shadow:0 0 .35vh rgba(0,0,0,.55)}
-  .wbgt{background:var(--lv-bg);color:var(--lv-fg);transition:background .6s;box-shadow:0 0 0 .35vh rgba(0,0,0,.28)}
+  td.warn{color:#f2c400}
+  .wbgt{background:var(--lv-bg);color:var(--lv-fg);transition:background .6s}
   .wbgt .k{color:inherit;opacity:.85}
   .wbgt .v{font-size:min(17vh,9.5vw)}
   .wbgt .v .dec{font-size:.55em;font-weight:700;letter-spacing:0}
@@ -66,7 +66,7 @@
   .chart{display:grid;grid-template-rows:auto 1fr;row-gap:.4vh;min-height:0}
   .chart .k{font-size:2.75vh;line-height:1.15;white-space:nowrap;overflow:hidden;display:flex;align-items:baseline}
   .chart .k .lg{overflow:hidden;text-overflow:ellipsis;min-width:0}
-  .chart .k .src{margin-left:auto;flex:none;padding-left:1vw;font-size:1.9vh;color:rgba(255,255,255,.55)}
+  .chart .k .src{margin-left:auto;flex:none;padding-left:1vw;font-size:1.9vh;color:#7f8e9c}
   .chart .k b{color:var(--ink);font-weight:400}
   .chart svg{width:100%;height:100%;display:block}
   .chart text{font-family:inherit}
@@ -155,7 +155,7 @@
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.3',
+  version: '1.2',
   placeName: '渋川市石原',
   lat: 36.489, lon: 139.001,   // 渋川市石原付近
   refreshMinute: 5,            // 毎時この分に更新
@@ -166,8 +166,7 @@ const CONFIG = {
   // 背景色：今の天気に連動（暗めの色調。WBGTの5色と混同しないよう彩度は抑えめ）。夜間はさらに暗く
   skyColors: {sun:'#74601f', partly:'#5c4b2e', cloud:'#4a5058', fog:'#55616b', rain:'#16305e', snow:'#56708a', thunder:'#3b2a5e'},
   skyMode: 'full',             // 背景の塗り方：'full'（全面を暗めの天気色）。'gradient'（上だけ）／'frame'（縁取り付き）も選べる
-  skyFull: {sun:'#b85a14', partly:'#4d4944', cloud:'#3a4048', fog:'#3d474f', rain:'#142a50', snow:'#31465c', thunder:'#2d2247'},
-  skyFullNight: {sun:'#1b2140', partly:'#252a38'},   // 夜の「晴れ」「曇/晴」は夜空の色（茶色く濁らせない）
+  skyFull: {sun:'#5a4414', partly:'#3f3a26', cloud:'#3a4048', fog:'#3d474f', rain:'#142a50', snow:'#31465c', thunder:'#2d2247'},
   skyFrame: {sun:'#e8961e', partly:'#b59a4a', cloud:'#9aa4ad', fog:'#aab4bc', rain:'#3b78e0', snow:'#8fb6d8', thunder:'#8d6be0'},
   // 注意喚起のしきい値（現在値・表の該当セルを色付け）
   alerts: {tempHigh:35, tempLow:3, rhLow:30, windWarn:5},   // 高温／凍結（気温3℃以下）／乾燥／強風注意のしきい値
@@ -495,7 +494,7 @@ function setSky(cat, night){
   document.documentElement.style.setProperty('--sky', night ? mix(hex, '#1c2733', 0.55) : hex);
   const root = document.documentElement.style;
   if(CONFIG.skyMode === 'gradient'){ root.removeProperty('--bgimg'); root.removeProperty('--page'); root.setProperty('--frame-w','0'); return; }
-  const full = CONFIG.skyFull[cat] || CONFIG.skyFull.cloud, fullC = night ? ((CONFIG.skyFullNight || {})[cat] || mix(full, '#1c2733', 0.5)) : full;
+  const full = CONFIG.skyFull[cat] || CONFIG.skyFull.cloud, fullC = night ? mix(full, '#1c2733', 0.5) : full;
   root.setProperty('--bgimg', fullC); root.setProperty('--page', fullC);
   if(CONFIG.skyMode === 'frame'){ root.setProperty('--frame', CONFIG.skyFrame[cat] || CONFIG.skyFrame.cloud); root.setProperty('--frame-w', '1.2vh'); }
   else root.setProperty('--frame-w', '0');
