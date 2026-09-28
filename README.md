@@ -1,1 +1,8 @@
 # tenki
+
+渋川市石原の「屋外の暑さと天気」を壁掛けテレビに表示するためのページです。
+
+- 公開ページ：https://k-tomitsuka.github.io/tenki/
+- 表示内容：気温・湿度・天気・風・暑さ指数（WBGT）、12時間の予報（表とグラフ）、気象庁の警報・注意報
+- 更新履歴：[CHANGELOG.md](CHANGELOG.md)
+- データの出典：気象庁、Open-Meteo（CC BY 4.0）
