@@ -5,4 +5,5 @@
 - 公開ページ：https://k-tomitsuka.github.io/tenki/
 - 表示内容：気温・湿度・天気・風・暑さ指数（WBGT）、12時間の予報（表とグラフ）、気象庁の警報・注意報
 - 更新履歴：[CHANGELOG.md](CHANGELOG.md)
+- 過去の版：`archive/` フォルダ（ファイル名は並び順をそろえるため v1.09 のように小数点以下2桁。画面の版番号 v1.9 と同じもの）
 - データの出典：気象庁、Open-Meteo（CC BY 4.0）
