@@ -54,7 +54,7 @@
   .al{display:inline-block;margin-top:.6vh;padding:.3vh 1vw;border-radius:.6vh;font-size:min(3.2vh,1.8vw);font-weight:700;white-space:nowrap;background:#f2c400;color:#1c1a12;max-width:100%;overflow:hidden;text-overflow:ellipsis}
     .al:empty{display:none}
   td.warn{color:#f2c400;text-shadow:0 0 .35vh rgba(0,0,0,.55)}
-  .wbgt{background:var(--lv-bg);color:var(--lv-fg);transition:background .6s;box-shadow:0 0 0 .35vh rgba(0,0,0,.28)}
+  .wbgt{background:var(--lv-bg);color:var(--lv-fg);transition:background .6s;border-left:none;box-shadow:0 0 0 .22vh rgba(255,255,255,.45)}
   .wbgt .k{color:inherit;opacity:.85}
   .wbgt.center{text-align:center}
   .wbgt .v{font-size:min(17vh,9.5vw)}
@@ -181,7 +181,7 @@
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.13',
+  version: '1.14',
   radar: true,                    // 「現在」の雨を気象庁レーダー（高解像度降水ナウキャスト）の観測で表示
   rainForecast: true,             // 降水の行を気象庁「今後の雨」（降水短時間予報・1km四方）で表示
   tileZoom: 10,                   // 気象庁の地図タイルの拡大段階（10＝約120m/画素）
