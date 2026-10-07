@@ -22,6 +22,8 @@ GitHubで `index.html` を開き、右上の鉛筆（Edit this file）で数字�
 | WBGTを常に表示する期間 | `wbgtAlways: ['06-01','08-31']` | 6〜8月は涼しい日もWBGT |
 | WBGTと体感温度の切り替え基準 | `wbgtShowFrom: 21` | 上の2つ以外の時期（春・秋）は、これから12時間でWBGTが21（注意）以上になるときだけWBGT、ならなければ体感温度 |
 | 行事の表示 | `campaigns: [ ... ]` | 1行が1つの行事。`from`/`to` は月-日（`'12-15'` から `'01-15'` のように年またぎ可）。外したい行事は行ごと消す。追加は同じ形で1行足す |
+| 体感温度の色 | `coldBands: [ ... ]` | 6段階の色（社内の目安）。`min` は「この値以上」、`bg` は色。段階の数や色は行ごとに変更可 |
+| 表の「体感」行の色 | `tintColdRow: true` | 色を付けないなら `false` |
 | 日の出・日の入り／明日・明後日 | `showSun: true` / `showDays: true` | 消したいときは `false` |
 | レーダー観測／今後の雨 | `radar: true` / `rainForecast: true` | 気象庁の画像を使わず予報モデルだけにするなら `false` |
 | 夜間の減光 | `dimNight: [22, 5], dimLevel: 0.75` | 22時〜5時に明るさ75％。減光をやめるなら `dimLevel: 1` |
@@ -37,6 +39,7 @@ GitHubで `index.html` を開き、右上の鉛筆（Edit this file）で数字�
 - `?test=30` … WBGTの値を仮に30にして色を確認（WBGTは上段・表とも小数第1位を四捨五入した整数で表示・判定）
 - `?wx=rain` … 天気を仮に雨にして背景を確認（sun / partly / cloud / fog / rain / snow / thunder）
 - `?season=winter` … 冬季モード（体感温度）の見え方
+- `?app=-3` … 体感温度を仮に-3℃にして色を確認
 - `?warn=14,15` … 雷注意報・強風注意報が出たときの見え方（数字は気象庁のコード）
 - `?alert=1` … 注意喚起のバッジを全部表示
 - `?radar=0` … 「現在」にレーダー観測の小雨を表示（1なら1〜5mm）

@@ -181,7 +181,7 @@
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.16',
+  version: '1.17',
   radar: true,                    // 「現在」の雨を気象庁レーダー（高解像度降水ナウキャスト）の観測で表示
   rainForecast: true,             // 降水の行を気象庁「今後の雨」（降水短時間予報・1km四方）で表示
   tileZoom: 10,                   // 気象庁の地図タイルの拡大段階（10＝約120m/画素）
@@ -204,7 +204,16 @@ const CONFIG = {
   wbgtSeason: ['04-20','10-31'],   // WBGTを表示しうる期間（月-日）。期間外は右端の枠を体感温度に切り替える
   wbgtAlways: ['06-01','08-31'],   // この期間は常にWBGTを表示（真夏）
   wbgtShowFrom: 21,                // それ以外の期間は、これから12時間でWBGTがこの値（注意）以上になるときだけWBGT、ならなければ体感温度
-  winterBlock: {bg:'#2f5d8a', fg:'#ffffff'},   // 体感温度表示のときの枠の色
+  winterBlock: {bg:'#2f5d8a', fg:'#ffffff'},   // 体感温度表示のときの枠の色（coldBands が空のとき）
+  coldBands: [                     // 体感温度の色（社内の目安）。寒いほど氷・雪に近い白っぽい水色。min は「この値以上」
+    {min:15,        bg:'#56687a'},  // 15℃以上：くすんだ灰青（寒くはない）
+    {min:10,        bg:'#3c7fae'},  // 10〜14℃：青
+    {min:5,         bg:'#4fb0c6'},  // 5〜9℃：氷寄りの水色
+    {min:0,         bg:'#8ddbe6'},  // 0〜4℃：氷の水色（降水の水色と区別）
+    {min:-5,        bg:'#c9f1f5'},  // -5〜-1℃：薄い氷
+    {min:-Infinity, bg:'#effcfd'}   // -6℃以下：霜・雪の白
+  ],
+  tintColdRow: true,               // 表の「体感」行も同じ色にするか
   staleHours: 6,                   // この時間以上予報を更新できないと画面中央に「更新停止」を表示
   skyNight: [18, 5],           // この時刻の間は夜扱い（背景を暗くする）
   dimNight: [22, 5], dimLevel: 0.75,   // この時刻の間は画面全体を減光（1で無効）
@@ -310,15 +319,21 @@ function fitBig(){
 /* 大きな数字の表示（小数1桁・繰り上がりとマイナスに対応） */
 function setBigNumber(x, decimals){
   const neg = x < 0, r1 = Math.round(Math.abs(x) * 10) / 10, ip = decimals ? Math.floor(r1 + 1e-9) : Math.round(Math.abs(x)), dp = Math.round(r1 * 10) % 10;
-  $('wbgt').innerHTML = (neg && (decimals ? r1 : ip) > 0 ? '<span class="neg">−</span>' : '') + ip;
+  $('wbgt').innerHTML = (neg && (decimals ? r1 : ip) > 0 ? '-' : '') + ip;        // マイナスは気温・表と同じ記号にそろえる
   $('wbgtDec').textContent = decimals ? '.' + dp : '';
+}
+const coldOf = v => (CONFIG.coldBands || []).find(b => Math.round(v) >= b.min);
+function inkOn(hex){   // 背景に対して読みやすい文字色（白か濃紺）を、コントラスト比で選ぶ
+  const c = [1,3,5].map(i => parseInt(hex.slice(i, i+2), 16) / 255).map(x => x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4);
+  const L = 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2], Ld = 0.0137;            // 濃紺 #0d2233 の明るさ
+  return (1.05 / (L + 0.05)) >= ((L + 0.05) / (Ld + 0.05)) ? '#ffffff' : '#0d2233';
 }
 /* 季節：WBGTの表示期間か（?season=winter / summer で確認用に切替） */
 /* 右端の枠をWBGTにするか体感温度にするか（真夏は常にWBGT、春秋は暑さの心配があるときだけWBGT、冬は体感温度） */
 let heatOn = true;
 function heatMode(rows, i0, now){
   const q = new URLSearchParams(location.search);
-  if(q.get('season') === 'winter') return false;
+  if(q.get('season') === 'winter' || q.get('app') !== null) return false;
   if(q.get('season') === 'summer' || q.get('test') !== null) return true;   // 確認用
   if(!isWbgtSeason(now)) return false;
   const md = pad(now.getMonth()+1) + '-' + pad(now.getDate()), [a, b] = CONFIG.wbgtAlways;
@@ -705,8 +720,10 @@ function renderNow(rows, i0, now){
     setBigNumber(wbgt, false);
     $('lvName').textContent = lv.name; $('lvName').classList.remove('small');
   }else{                                                                   // WBGTの期間外は体感温度
-    const app = a.app ?? temp, d = Math.round(app - temp);
-    root.setProperty('--lv-bg', CONFIG.winterBlock.bg); root.setProperty('--lv-fg', CONFIG.winterBlock.fg);
+    const qa = new URLSearchParams(location.search).get('app');                    // ?app=-3 で色の確認
+    const app = qa !== null ? parseFloat(qa) : (a.app ?? temp), d = Math.round(app - temp);
+    const cb = coldOf(app);
+    root.setProperty('--lv-bg', cb ? cb.bg : CONFIG.winterBlock.bg); root.setProperty('--lv-fg', cb ? inkOn(cb.bg) : CONFIG.winterBlock.fg);
     $('wbLabel').textContent = '体感温度（風・湿度を加味）'; $('wbUnit').textContent = '℃';
     setBigNumber(app, false);
     $('lvName').textContent = d <= -1 ? `気温より${-d}℃低い` : d >= 1 ? `気温より${d}℃高い` : '気温とほぼ同じ';
@@ -791,6 +808,7 @@ function renderTable(rows, i0, now){
   html += `<tr class="r-pop"><th>降水確率</th>${groups.map(g=>`<td colspan="${g.n}" class="${g.pop!==null&&g.pop>=50?'hi':''}">${g.pop!==null?g.pop+'%':'—'}</td>`).join('')}</tr>`;
   html += `<tr class="r-wd"><th>風速</th>${cols.map((r,i)=>`<td ${tc(i, Math.round(r.ws*10)/10>=A.windWarn?'warn':'')}>${r.ws<0.3?'<span style="font-size:2.8vh;font-weight:400;color:var(--mute)">静穏</span>':ARROW.replace('DEG',(r.wd+180)%360)+r.ws.toFixed(1)}</td>`).join('')}</tr>`;
   if(heatOn) html += `<tr class="r-wb"><th>WBGT</th>${cols.map((r,i)=>{const l=levelShown(r.wbgt);return `<td class="c" style="background:${l.bg};color:${l.fg}">${Math.round(r.wbgt)}</td>`;}).join('')}</tr>`;
+  else if(CONFIG.tintColdRow) html += `<tr class="r-wb"><th>体感</th>${cols.map((r,i)=>{const v=r.app ?? r.temp, cb=coldOf(v);return `<td class="c" style="background:${cb ? cb.bg : CONFIG.winterBlock.bg};color:${cb ? inkOn(cb.bg) : '#ffffff'}">${Math.round(v)}<small style="font-size:.5em">℃</small></td>`;}).join('')}</tr>`;
   else html += `<tr class="r-num"><th>体感</th>${cols.map((r,i)=>`<td ${tc(i, '')}>${Math.round(r.app ?? r.temp)}<small>℃</small></td>`).join('')}</tr>`;
   $('tbl').innerHTML = html;
 }
