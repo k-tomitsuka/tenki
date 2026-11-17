@@ -84,6 +84,7 @@
   .diag .d.ok{background:#3ec97c}
   .diag .d.ng{background:#ff5a4e}
   .diag .ng{color:#ff8a80;margin-right:.5vw}
+  .diag .why{color:#ffcf7a;margin-right:.7vw}
   .chart .k b{color:var(--ink);font-weight:400}
   .chart svg{width:100%;height:100%;display:block}
   .chart text{font-family:inherit}
@@ -125,6 +126,15 @@
   #stale small{display:block;margin-top:1vh;font-size:2.6vh;font-weight:400;color:#e8e2d6}
   body.stale #stale{display:block}
   body.stale .cur, body.stale .chart, body.stale .tbl{opacity:.35}
+
+  /* 動作の記録（リモコンの決定ボタンか方向ボタンで表示。1分で消える） */
+  #logv{display:none;position:fixed;left:0;top:0;right:0;bottom:0;z-index:20;background:rgba(12,17,23,.97);color:#e8e2d6;padding:2vh 2vw;font-size:2.6vh;line-height:1.36;overflow:hidden}
+  body.logv #logv{display:block}
+  #logv h2{font-size:3.2vh;font-weight:700;color:#f2c400;margin-bottom:.8vh;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #logv h2 small{font-size:2.2vh;font-weight:400;color:#e8e2d6;margin-left:1.2vw}
+  #logv div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #logv div b{display:inline-block;min-width:7.2em;font-weight:400;color:rgba(255,255,255,.6)}
+  #logv p{margin-top:.8vh;font-size:2.2vh;color:rgba(255,255,255,.55)}
 
 </style>
 </head>
@@ -170,18 +180,22 @@
 </section>
 
 <section class="chart">
-  <div class="k"><span class="lg">これから12時間の気温<span id="lgWbgt">　　●の色＝WBGT危険度　<span class="chip" style="background:#1d55c2"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</span></span><span class="src"><span class="diag" id="diag"></span>v<span id="ver"></span>　出典：気象庁／Open-Meteo</span></div>
+  <div class="k"><span class="lg">これから12時間の気温<span id="lgWbgt">　　●の色＝WBGT危険度　<span class="chip" style="background:#1d55c2"></span>ほぼ安全<span class="chip" style="background:#2aa7c9"></span>注意<span class="chip" style="background:#e8c22e"></span>警戒<span class="chip" style="background:#ef8b1c"></span>厳重警戒<span class="chip" style="background:#d9382e"></span>危険</span></span><span class="src"><span class="diag" id="diag"></span>v<span id="ver"></span>　出典：気象庁／<span id="credit">Open-Meteo</span></span></div>
   <svg id="chartTemp"></svg>
 </section>
 
 <section class="tbl"><table id="tbl"></table></section>
 <div id="stale"></div>
+<div id="logv"></div>
 
-
+<script>
+/* 見張り：本体のプログラムが10分たっても動き出さないとき（公開した版に不具合があったときなど）は、ページを読み直して、直った版が出るのを待つ */
+setTimeout(function(){ if(!window.boardStarted) location.reload(); }, 600000);
+</script>
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.18',
+  version: '1.19',
   radar: true,                    // 「現在」の雨を気象庁レーダー（高解像度降水ナウキャスト）の観測で表示
   rainForecast: true,             // 降水の行を気象庁「今後の雨」（降水短時間予報・1km四方）で表示
   tileZoom: 10,                   // 気象庁の地図タイルの拡大段階（10＝約120m/画素）
@@ -214,10 +228,16 @@ const CONFIG = {
     {min:-Infinity, bg:'#effcfd'}   // -6℃以下：霜・雪の白
   ],
   tintColdRow: true,               // 表の「体感」行も同じ色にするか
-  staleHours: 6,                   // この時間以上予報を更新できないと画面中央に「更新停止」を表示
-  retryMinutes: 5,                 // 予報の取得に失敗したときの再試行の間隔（分）
+  staleHours: 2,                   // テレビがネットにつながらない状態がこの時間続いたら、画面中央に「ネットにつながっていません」と再起動の案内を表示
+  staleSourceHours: 24,            // 回線は正常で予報の配信元だけが止まっているときは、手元の予報がこの時間より古くなるまで、ふつうに表示を続ける
+  restartHint: 'リモコンの電源ボタンを長押し →「再起動」。直らないときは事務所へ',   // ネットにつながらないときに画面に出す案内
+  retrySteps: [0.5, 1, 2, 5],      // 予報の取得に失敗したときの再試行の間隔（分）。失敗が続くと右の値へ進み、最後の値を繰り返す
   fallbackApi: true,               // 予報の配信元（api.open-meteo.com）に届かないときは、Open-Meteoの別サーバー（historical-forecast-api）から同じ予報を取る
+  metnoApi: true,                  // 通常・予備の両方に届かないときは、ノルウェー気象研究所（MET Norway）の予報を使う（別の機関の配信。見出しに「予備2」と出る）
   saveForecast: true,              // 最後に取れた予報（3日分）をテレビ内に保存し、再起動・再読込の直後もそれで表示する
+  autoUpdate: true,                // 公開中の版を1時間ごとに確かめ、新しい版が出ていたら自動で読み直す（文法エラーのある版は読み込まない）
+  logKeys: true,                   // リモコンの決定ボタン・方向ボタンで「動作の記録」を表示する（原因調べ用。1分で消える）
+  rainFarHours: 6,                 // 発表からこの時間より先の雨（気象庁の予報は強めに出る傾向）は、予報モデルのほうが弱いとき1段階弱く表示。0で無効
   skyNight: [18, 5],           // この時刻の間は夜扱い（背景を暗くする）
   dimNight: [22, 5], dimLevel: 0.75,   // この時刻の間は画面全体を減光（1で無効）
   jmaOffice: '100000', jmaArea: '100010',   // 気象庁 府県予報（今日の概況）と地域時系列予報（3時間ごとの天気）。渋川市を含む区域
@@ -242,8 +262,17 @@ const CONFIG = {
 
 /* ===== 状態 ===== */
 const PAGE_T0 = Date.now();
-let lastData = null, lastOk = 0, lastSrc = '', retryTimer = null, jmaText = '', jmaWarn = [], warnShown = [];   // lastSrc：'main'（通常）／'fallback'（予備）
-const diag = {fc:0, wx:0, om:0, warn:0, radar:0, rain:0};   // 各データの最終取得成功時刻（管理者向けの自己診断）。om＝予報モデル（Open-Meteo）
+let lastData = null, lastOk = 0, lastSrc = '', retryTimer = null, jmaText = '', jmaWarn = [], warnShown = [];   // lastSrc：'main'（通常）／'fallback'（予備）／'metno'（予備2）
+let sessionOk = 0, failCount = 0, refreshing = 0, renderErr = '', updT = PAGE_T0, updNote = '', dailyTry = 0;   // sessionOk：この画面を開いてから予報が取れた最後の時刻
+let clockText = '', lastMin = -1, dimOn = null;
+const srcErr = {main:'', fallback:'', metno:''};   // 直近の取得で失敗した配信元とその理由（t＝時間切れ、n＝不通（つながらない）、e＝空（中身が使えない）、数字＝HTTPの番号）
+const SRC_NAME = {main:'通常', fallback:'予備', metno:'予備2'}, SRC_WHY = {t:'時間切れ', n:'不通', e:'空'};   // 画面右下に出すので短く
+const srcWhy = () => {                             // 失敗した配信元を理由ごとにまとめる（例：通常/予備:不通 予備2:時間切れ）
+  const g = {};
+  for(const k of Object.keys(srcErr)) if(srcErr[k]){ const w = SRC_WHY[srcErr[k]] || 'HTTP' + srcErr[k]; (g[w] = g[w] || []).push(SRC_NAME[k]); }
+  return Object.keys(g).map(w => `${g[w].join('/')}:${w}`).join(' ');
+};
+const diag = {fc:0, wx:0, om:0, warn:0, radar:0, rain:0, gh:0};   // 各データの最終取得成功時刻（管理者向けの自己診断）。om＝予報モデル、gh＝公開ページ（GitHub）
 
 /* ===== 環境省の暑さ指数レベル ===== */
 const LEVELS = [
@@ -362,56 +391,163 @@ const pad = n => String(n).padStart(2,'0');
 const fmtHM = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 const parseLocal = s => { const m = s.match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/); return new Date(+m[1], m[2]-1, +m[3], +m[4], +m[5]); };
 const hourLabel = (t, now) => (t.getDate() !== now.getDate() && t.getHours() === 0) ? '翌0時' : `${t.getHours()}時`;
-async function getWithTimeout(url, ms){
+async function getWithTimeout(url, ms, as, cacheMode){   // as：'json'／'text'／'blob'。本文を読み終わるまでを制限時間に含める（途中で止まった通信で固まらないように）
   const c = new AbortController(); const t = setTimeout(()=>c.abort(), ms);
-  try{ const r = await fetch(url, {signal:c.signal, cache:'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); return r; }
+  try{ const r = await fetch(url, {signal:c.signal, cache:cacheMode || 'no-store'}); if(!r.ok) throw new Error('HTTP '+r.status); return await r[as || 'json'](); }
   finally{ clearTimeout(t); }
 }
 
+/* ===== 動作の記録（原因調べ用） =====
+   起動・予報の取得の失敗と復旧・画面が隠れた時刻・回線の切断などを、テレビ内に新しい順で60件まで残す。
+   リモコンの決定ボタンか方向ボタンを押すと画面に一覧を出す（1分で消える。下ボタンで古い記録へ）。写真に撮れば、止まった時刻と理由があとから分かる */
+const LOG_KEY = 'tenki.log', ALIVE_KEY = 'tenki.alive', LOG_MAX = 60, LOG_ROWS = 22;
+let logBuf = [], logTimer = null, logPage = 0, lastTick = Date.now(), resumeT = 0, wxState = 'main', staleState = '', errLogged = 0, hiddenAt = 0, hiddenLogged = false, leaving = false;   // wxState：予報の取得の状態（はじめは「通常で取得」とみなし、変わったときだけ記録する）
+try{ const a = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); if(Array.isArray(a)) logBuf = a.filter(x => x && typeof x.t === 'number' && typeof x.m === 'string').slice(-LOG_MAX); }catch(e){}
+const fmtMDHM = ms => { const t = new Date(ms); return `${t.getMonth()+1}/${t.getDate()} ${fmtHM(t)}`; };
+function logEv(m, t){
+  logBuf.push({t: t || Date.now(), m: String(m).slice(0, 90)});
+  if(logBuf.length > LOG_MAX) logBuf = logBuf.slice(-LOG_MAX);
+  try{ localStorage.setItem(LOG_KEY, JSON.stringify(logBuf)); }catch(e){}
+  if(document.body.classList.contains('logv')) renderLog();
+}
+function renderLog(){
+  const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;'}[c]));
+  const up = Math.max(0, Math.floor((Date.now() - PAGE_T0) / 60000));
+  let stor = '不可'; try{ localStorage.setItem('tenki.t', '1'); localStorage.removeItem('tenki.t'); stor = '可'; }catch(e){}
+  const all = logBuf.slice().reverse(), pages = Math.max(1, Math.ceil(all.length / LOG_ROWS));
+  logPage = Math.min(Math.max(0, logPage), pages - 1);
+  $('logv').innerHTML = `<h2>動作の記録（新しい順）<small>v${CONFIG.version}　起動 ${fmtMDHM(PAGE_T0)}（${Math.floor(up/60)}時間${up%60}分前）　画面 ${innerWidth}×${innerHeight}　保存 ${stor}　回線 ${navigator.onLine === false ? '切断' : '接続'}</small></h2>`
+    + all.slice(logPage * LOG_ROWS, (logPage + 1) * LOG_ROWS).map(x => `<div><b>${fmtMDHM(x.t)}</b>${esc(x.m)}</div>`).join('')
+    + `<p>${pages > 1 ? `${logPage + 1}／${pages}ページ（下ボタンで古い記録、上ボタンで戻る）　` : ''}この画面を写真に撮っておくと、止まった時刻と理由があとから分かります。1分で自動的に消えます（決定ボタンでも消えます）</p>`;
+}
+function toggleLog(on, page){
+  clearTimeout(logTimer);
+  document.body.classList.toggle('logv', on);
+  if(on){ logPage = page || 0; renderLog(); logTimer = setTimeout(() => toggleLog(false), 60000); }
+  else $('logv').innerHTML = '';
+}
+window.addEventListener('keydown', e => {
+  if(!CONFIG.logKeys || e.repeat) return;
+  const k = e.key, c = e.keyCode, open = document.body.classList.contains('logv');
+  const ok = k === 'Enter' || k === ' ' || c === 13, older = k === 'ArrowDown' || k === 'ArrowRight' || c === 40 || c === 39, newer = k === 'ArrowUp' || k === 'ArrowLeft' || c === 38 || c === 37;
+  if(!(ok || older || newer)) return;
+  if(!open) toggleLog(true);                                  // 決定ボタン・方向ボタンのどれでも開く
+  else if(ok) toggleLog(false);                               // 開いているとき：決定で閉じる、下（右）で古い記録へ、上（左）で新しい記録へ
+  else toggleLog(true, logPage + (older ? 1 : -1));
+});
+window.addEventListener('pagehide', () => { leaving = true; });
+window.addEventListener('pageshow', () => { leaving = false; });
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden){
+    if(leaving || hiddenAt) return;
+    hiddenAt = Date.now(); hiddenLogged = false;
+    setTimeout(() => { if(hiddenAt && !hiddenLogged && !leaving){ hiddenLogged = true; logEv('画面が隠れた（別の画面・消灯など）', hiddenAt); } }, 2000);   // 読み直しで閉じるとき（すぐ消える）は記録しない
+  }else if(hiddenAt){
+    if(!hiddenLogged) logEv('画面が隠れた（別の画面・消灯など）', hiddenAt);
+    logEv('画面が戻った'); hiddenAt = 0; hiddenLogged = false;
+  }
+});
+window.addEventListener('offline', () => logEv('回線が切れた'));
+window.addEventListener('online', () => logEv('回線が戻った'));
+window.addEventListener('error', e => { if(errLogged++ < 5) logEv('エラー：' + ((e && e.message) || '')); });
+window.addEventListener('unhandledrejection', e => { if(errLogged++ < 5) logEv('エラー：' + String((e && e.reason && e.reason.message) || (e && e.reason) || '')); });
+
 /* ===== 時計・日次リロード ===== */
 function tickClock(){
-  const d = new Date();
-  $('clock').innerHTML = `<span class="d">${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）</span><span class="t">${fmtHM(d)}</span>`;
-  // 毎日3:30に再読込（読込から1時間以上たち、直近の更新が成功しているときだけ＝通信断のときは白画面にしない）
-  if(d.getHours()===CONFIG.dailyReloadHour && d.getMinutes()>=30 && Date.now()-PAGE_T0 > 3600000 && lastOk && Date.now()-lastOk < 2*3600000) location.reload();
-  if(d.getSeconds() === 0){ checkStale(); renderDiag(); showUpdated(); }
-  const h = d.getHours(), [a, b] = CONFIG.dimNight, night = a > b ? (h >= a || h < b) : (h >= a && h < b);
-  document.documentElement.style.filter = (night && CONFIG.dimLevel < 1) ? `brightness(${CONFIG.dimLevel})` : '';
+  const d = new Date(), nowMs = d.getTime();
+  if(nowMs - lastTick > 180000){                 // 3分以上の空白＝テレビの休止・固まりなど。再開したらすぐ取り直し、取り直す間は「ネットにつながっていません」を出さない
+    logEv(`動きが止まっていた ${fmtMDHM(lastTick)}〜${fmtHM(d)}`);
+    resumeT = lastTick = nowMs; refresh();
+  }
+  lastTick = nowMs;
+  const txt = `<span class="d">${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）</span><span class="t">${fmtHM(d)}</span>`;
+  if(txt !== clockText){ $('clock').innerHTML = txt; clockText = txt; }          // 表示が変わるとき（1分に1回）だけ書き換える
+  // 毎日3:30台に読み直し（読込から1時間以上たち、直近の更新が成功しているときだけ＝通信断のときは白画面にしない）。10分に1回まで試す
+  if(d.getHours()===CONFIG.dailyReloadHour && d.getMinutes()>=30 && Date.now()-PAGE_T0 > 3600000 && lastOk && Date.now()-lastOk < 2*3600000 && Date.now()-dailyTry > 10*60000){ dailyTry = Date.now(); checkUpdate(true); }
+  if(d.getMinutes() !== lastMin){
+    lastMin = d.getMinutes(); checkStale(); renderDiag(); showUpdated();
+    if(lastMin % 5 === 0){ try{ localStorage.setItem(ALIVE_KEY, String(nowMs)); }catch(e){} }   // 動いていた最後の時刻（次の起動のときに「いつまで動いていたか」を記録する）
+  }
+  const h = d.getHours(), [a, b] = CONFIG.dimNight, night = (a > b ? (h >= a || h < b) : (h >= a && h < b)) && CONFIG.dimLevel < 1;
+  if(night !== dimOn){ document.documentElement.style.filter = night ? `brightness(${CONFIG.dimLevel})` : ''; dimOn = night; }
 }
-setInterval(tickClock, 1000); tickClock();
+setInterval(tickClock, 1000);
 
 /* ===== 気象データ（Open-Meteo） ===== */
 const HVARS = ['temperature_2m','relative_humidity_2m','weather_code','cloud_cover','precipitation','wind_speed_10m','wind_direction_10m','shortwave_radiation','apparent_temperature','is_day'];
 const OM_MAIN = 'https://api.open-meteo.com/v1/forecast';
 const OM_FALLBACK = 'https://historical-forecast-api.open-meteo.com/v1/forecast';   // 同じモデルの予報を同じ形式で返す別サーバー（今日〜明後日を日付で指定）
-function okWeather(j){                // 使える予報か：これから先の時刻に、どれかのモデルの気温が入っていること
+const METNO = 'https://api.met.no/weatherapi/locationforecast/2.0/complete';          // ノルウェー気象研究所（MET Norway）。世界各地の予報を配信（CC BY 4.0）
+function okWeather(j){                // 使える予報か：今の時刻から表に出す時間ぶん、気温・湿度・風がそろっていること
   const h = j && j.hourly;
   if(!h || !Array.isArray(h.time) || !h.time.length) return false;
-  const now = Date.now();
-  return h.time.some((s, i) => parseLocal(s).getTime() > now && CONFIG.models.some(m => {
-    const a = h[`temperature_2m_${m}`] || (CONFIG.models.length === 1 ? h.temperature_2m : null);
-    return a && a[i] !== null && a[i] !== undefined;
-  }));
+  let rows; try{ rows = consensusRows(h); }catch(e){ return false; }
+  const now = Date.now(), k = rows.findIndex(r => r.t.getTime() > now);
+  if(k === -1) return false;
+  const cols = rows.slice(Math.max(0, k - 1), Math.max(0, k - 1) + CONFIG.tableHours);
+  return cols.length >= CONFIG.tableHours && cols.every(r => [r.temp, r.rh, r.ws].every(v => typeof v === 'number' && isFinite(v)));
+}
+const errCode = e => { const m = String((e && e.message) || e); return (e && e.name === 'AbortError') ? 't' : /^HTTP \d+/.test(m) ? m.slice(5) : (m === 'empty' || (e && e.name === 'SyntaxError')) ? 'e' : 'n'; };
+/* 太陽の高さ（度）。予備2には日射量がないので、太陽の高さと雲の量から見積もる（暑さ指数の計算用） */
+function solarElev(date, lat, lon){
+  const rad = Math.PI / 180, n = date.getTime() / 86400000 + 2440587.5 - 2451545.0;
+  const L = (280.460 + 0.9856474 * n) % 360, g = (357.528 + 0.9856003 * n) % 360;
+  const lam = L + 1.915 * Math.sin(g * rad) + 0.020 * Math.sin(2 * g * rad), eps = 23.439 - 0.0000004 * n;
+  const ra = Math.atan2(Math.cos(eps * rad) * Math.sin(lam * rad), Math.cos(lam * rad)) / rad, dec = Math.asin(Math.sin(eps * rad) * Math.sin(lam * rad)) / rad;
+  const ut = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600, gmst = (6.697375 + 0.0657098242 * n + ut) % 24;
+  const ha = ((gmst + lon / 15) * 15 - ra) * rad;
+  return Math.asin(Math.sin(lat * rad) * Math.sin(dec * rad) + Math.cos(lat * rad) * Math.cos(dec * rad) * Math.cos(ha)) / rad;
+}
+function srEstimate(tEnd, cloud){     // その時刻までの1時間の日射量（W/m²）の見積もり：快晴時の値（Haurwitz）×雲による減り（Kasten–Czeplak）
+  let s = 0;
+  for(const m of [50, 30, 10]){ const cz = Math.sin(solarElev(new Date(tEnd.getTime() - m * 60000), CONFIG.lat, CONFIG.lon) * Math.PI / 180); s += cz > 0.01 ? 1098 * cz * Math.exp(-0.057 / cz) : 0; }
+  const c = Math.min(1, Math.max(0, (typeof cloud === 'number' ? cloud : 50) / 100));
+  return Math.round(s / 3 * (1 - 0.75 * Math.pow(c, 3.4)));
+}
+/* MET Norway の予報を、Open-Meteo と同じ並び（1時間ごと・テレビの時刻）に直す。配信元が1つなので合議はせず、その値をそのまま使う */
+function metnoToHourly(j){
+  const ts = (j && j.properties && j.properties.timeseries) || [];
+  const H = {single:true, time:[]}; for(const v of HVARS) H[v] = [];
+  const num = x => (typeof x === 'number' && isFinite(x)) ? x : null;
+  let prev = null;
+  for(const e of ts){
+    const t = new Date(e.time), d = e.data && e.data.instant && e.data.instant.details;
+    if(!d || isNaN(t.getTime())) continue;
+    if(prev && t.getTime() - prev.t !== 3600000) break;                          // 1時間ごとの部分だけ使う（その先は6時間ごと）
+    const n1 = e.data.next_1_hours, n6 = e.data.next_6_hours;
+    const code = String((n1 && n1.summary && n1.summary.symbol_code) || (n6 && n6.summary && n6.summary.symbol_code) || '');
+    const ta = num(d.air_temperature), cc = num(d.cloud_area_fraction);
+    const wc = /thunder/.test(code) ? 95 : /snow/.test(code) ? 73 : /sleet/.test(code) ? ((ta !== null && ta <= 1) ? 73 : 63) : /heavyrain/.test(code) ? 65 : /lightrain/.test(code) ? 61 : /rain/.test(code) ? 63
+             : /fog/.test(code) ? 45 : /partlycloudy/.test(code) ? 2 : /cloudy/.test(code) ? 3 : /fair/.test(code) ? 1 : /clearsky/.test(code) ? 0 : null;
+    H.time.push(`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}T${pad(t.getHours())}:${pad(t.getMinutes())}`);
+    H.temperature_2m.push(ta); H.relative_humidity_2m.push(num(d.relative_humidity)); H.weather_code.push(wc); H.cloud_cover.push(cc);
+    H.precipitation.push(prev ? prev.pr : null);                                  // Open-Meteoと同じ「その時刻までの1時間」の雨量にそろえる
+    H.wind_speed_10m.push(num(d.wind_speed)); H.wind_direction_10m.push(num(d.wind_from_direction));
+    H.shortwave_radiation.push(srEstimate(t, cc)); H.apparent_temperature.push(null);   // 体感温度は通常時と同じ式でこのページが計算する
+    H.is_day.push(solarElev(t, CONFIG.lat, CONFIG.lon) > -0.83 ? 1 : 0);
+    prev = {t: t.getTime(), pr: (n1 && n1.details) ? num(n1.details.precipitation_amount) : null};
+  }
+  return {hourly: H};
 }
 async function fetchWeather(){
   const base = {
     latitude: CONFIG.lat, longitude: CONFIG.lon, hourly: HVARS.join(','), models: CONFIG.models.join(','),
     timezone: 'Asia/Tokyo', wind_speed_unit: 'ms'
   };
-  try{
-    const r = await getWithTimeout(OM_MAIN + '?' + new URLSearchParams({...base, forecast_days: 3}), 10000);
-    const j = await r.json();
-    if(!okWeather(j)) throw new Error('予報の中身が空');
-    return {data: j, src: 'main'};
-  }catch(e){
-    if(!CONFIG.fallbackApi) throw e;
-    const d0 = new Date(), d2 = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 2);
-    const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-    const r = await getWithTimeout(OM_FALLBACK + '?' + new URLSearchParams({...base, start_date: ymd(d0), end_date: ymd(d2)}), 15000);
-    const j = await r.json();
-    if(!okWeather(j)) throw new Error('予報の中身が空');
-    return {data: j, src: 'fallback'};
+  const d0 = new Date(), d2 = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 2);
+  const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+  const sources = [
+    ['main', true, () => getWithTimeout(OM_MAIN + '?' + new URLSearchParams({...base, forecast_days: 3}), 10000)],
+    ['fallback', CONFIG.fallbackApi, () => getWithTimeout(OM_FALLBACK + '?' + new URLSearchParams({...base, start_date: ymd(d0), end_date: ymd(d2)}), 15000)],
+    ['metno', CONFIG.metnoApi, async () => metnoToHourly(await getWithTimeout(`${METNO}?lat=${+(+CONFIG.lat).toFixed(4)}&lon=${+(+CONFIG.lon).toFixed(4)}`, 15000, 'json', 'default'))]   // 配信側の指定どおり、有効期限内は取り直さない
+  ];
+  for(const k of Object.keys(srcErr)) srcErr[k] = '';
+  for(const [key, on, get] of sources){
+    if(!on) continue;
+    try{ const j = await get(); if(!okWeather(j)) throw new Error('empty'); return {data: j, src: key}; }
+    catch(e){ srcErr[key] = errCode(e); }
   }
+  throw new Error('all sources failed');
 }
 /* 最後に取れた予報をテレビ内（ブラウザの保存領域）に保存。保存できない環境では何もしない */
 const SAVE_KEY = 'tenki.forecast';
@@ -428,11 +564,12 @@ function loadForecast(){
     return s;
   }catch(e){ return null; }
 }
-/* 見出しの「更新 hh:mm」。今日でなければ日付も付け、予備の配信元から取ったときは（予備） */
+/* 見出しの「更新 hh:mm」。今日でなければ日付も付け、予備の配信元から取ったときは（予備）／（予備2）。右下の出典も取得元に合わせる */
 function showUpdated(){
   if(!lastOk){ $('updated').textContent = '--:--'; return; }
   const t = new Date(lastOk), today = new Date();
-  $('updated').textContent = (t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t) + (lastSrc === 'fallback' ? '（予備）' : '');
+  $('updated').textContent = (t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t) + ({fallback:'（予備）', metno:'（予備2）'}[lastSrc] || '');
+  $('credit').textContent = lastSrc === 'metno' ? 'MET Norway' : 'Open-Meteo';
 }
 
 /* ===== 合議（アンサンブル）：モデルごとの値を重み付き中央値・多数決でまとめる ===== */
@@ -445,8 +582,8 @@ function wmedian(vals, ws){                       // 重み付き中央値
 function wxCat(code, cloud, precip){ return wxOf(code, cloud, precip)[1]; }   // 天気の区分（sun/partly/cloud/fog/rain/snow/thunder）
 
 function consensusRows(h){
-  const models = CONFIG.models, W = m => CONFIG.weights[m] || 1;
-  const get = (v, m, i) => { const arr = h[`${v}_${m}`] || (models.length===1 ? h[v] : null); return arr ? arr[i] : null; };
+  const models = h.single ? ['single'] : CONFIG.models, W = m => CONFIG.weights[m] || 1;   // h.single：配信元が1つだけの予報（予備2）
+  const get = (v, m, i) => { const arr = h.single ? h[v] : (h[`${v}_${m}`] || (models.length===1 ? h[v] : null)); return arr ? arr[i] : null; };
   return h.time.map((s,i)=>{
     const per = [];                               // モデル別の値
     for(const m of models){
@@ -482,8 +619,7 @@ function consensusRows(h){
 let jmaWx = [], jmaPop = [];
 async function fetchJmaWx(){
   try{
-    const r = await getWithTimeout(`https://www.jma.go.jp/bosai/jmatile/data/wdist/VPFD/${CONFIG.jmaArea}.json`, 10000);
-    const j = await r.json();
+    const j = await getWithTimeout(`https://www.jma.go.jp/bosai/jmatile/data/wdist/VPFD/${CONFIG.jmaArea}.json`, 10000);
     const ts = j.areaTimeSeries, defs = ts.timeDefines, wx = ts.weather;
     if(!Array.isArray(defs) || !Array.isArray(wx)) return;
     const toCat = w => /雷/.test(w) ? 'thunder' : /雪/.test(w) ? 'snow' : /雨/.test(w) ? 'rain' : /霧/.test(w) ? 'fog' : /晴/.test(w) ? 'sun' : /(くもり|曇)/.test(w) ? 'cloud' : null;
@@ -506,8 +642,7 @@ function catFor(row){                  // 公式予報があればそれを、�
 /* 今日の天気概況（気象庁の府県予報文）を見出しに表示。区域名は出さない */
 async function fetchJma(){
   try{
-    const r = await getWithTimeout(`https://www.jma.go.jp/bosai/forecast/data/forecast/${CONFIG.jmaOffice}.json`, 10000);
-    const j = await r.json();
+    const j = await getWithTimeout(`https://www.jma.go.jp/bosai/forecast/data/forecast/${CONFIG.jmaOffice}.json`, 10000);
     const ts = j[0].timeSeries[0];
     const area = ts.areas.find(a => a.area.code === CONFIG.jmaArea) || ts.areas[0];
     // 今日の日付の予報を選ぶ（17時発表の先頭は「その日の夜」なので、日付が変わった後は2番目が今日）
@@ -544,8 +679,7 @@ const WARN = {   // コード: [名称, 区分(20注意報/30警報/40危険警�
 };
 async function fetchWarn(){
   try{
-    const r = await getWithTimeout(`https://www.jma.go.jp/bosai/warning/data/r8/${CONFIG.jmaOffice}.json`, 10000);
-    const j = await r.json();
+    const j = await getWithTimeout(`https://www.jma.go.jp/bosai/warning/data/r8/${CONFIG.jmaOffice}.json`, 10000);
     const reports = (Array.isArray(j) ? j : [j]).slice().sort((a,b) => String(a.reportDatetime||'').localeCompare(String(b.reportDatetime||'')));
     const state = new Map();                        // 種類ごとに、いちばん新しい発表の状態を採用
     for(const rep of reports){
@@ -571,7 +705,7 @@ function renderWarn(){
   $('warns').innerHTML = warnShown.map(w => `<span class="wchip w${w.level}">${w.name}</span>`).join('');
 }
 const warnHas = kind => warnShown.some(w => w.kind === kind);
-/* 自己診断：右下に4つの点（予報・警報・レーダー・今後の雨）。止まっているものは名前を赤で表示 */
+/* 自己診断：右下に4つの点（予報・警報・レーダー・今後の雨）。止まっているものは名前を赤で表示。予報の配信元で失敗したものは、その理由も小さく出す */
 function renderDiag(){
   const now = Date.now(), items = [
     ['予報', Math.min(diag.fc || 0, diag.wx || 0, diag.om || 0), 3 * 3600000],
@@ -579,7 +713,8 @@ function renderDiag(){
     ['レーダー', diag.radar, 20 * 60000],
     ['今後の雨', diag.rain, 90 * 60000]
   ];
-  $('diag').innerHTML = items.map(([name, t, th]) => {
+  const why = [renderErr ? '表示エラー' : '', updNote, srcWhy()].filter(Boolean).join(' ');
+  $('diag').innerHTML = (why ? `<span class="why">${why}</span>` : '') + items.map(([name, t, th]) => {
     const st = t ? (now - t < th ? 'ok' : 'ng') : (now - PAGE_T0 > th ? 'ng' : 'na');
     return st === 'ng' ? `<span class="ng"><span class="d ng"></span>${name}</span>` : `<span class="d ${st}"></span>`;
   }).join('');
@@ -604,17 +739,17 @@ const RAIN_BINS = [   // 気象庁の降水の配色 [R,G,B, 表示]（弱い順
   [242,242,255,'小雨'], [160,210,255,'1〜5'], [33,140,255,'5〜10'], [0,65,255,'10〜20'],
   [250,245,0,'20〜30'], [255,153,0,'30〜50'], [255,40,0,'50〜80'], [180,0,104,'80〜']
 ];
-let radarNow = null, rainFc = {}, rainTick = 0;
+let radarNow = null, rainFc = [], rainTick = 0;   // rainFc：気象庁「今後の雨」の各コマ {v:対象時刻（その時刻までの1時間）, b:発表時刻, bin:降水の区分, at:読んだ時刻}
 const parseUtc = s => Date.UTC(+s.slice(0,4), +s.slice(4,6)-1, +s.slice(6,8), +s.slice(8,10), +s.slice(10,12));
 function tileOf(lat, lon, z){
   const n = 2 ** z, xf = (lon + 180) / 360 * n, lr = lat * Math.PI / 180, yf = (1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2 * n;
   return {z, x: Math.floor(xf), y: Math.floor(yf), px: Math.floor((xf - Math.floor(xf)) * 256), py: Math.floor((yf - Math.floor(yf)) * 256)};
 }
 async function tileMaxBin(url, t, rad){   // 戻り値：-1＝雨なし、0以上＝RAIN_BINSの番号。取得・読取できなければ例外
-  let r;
-  try{ r = await getWithTimeout(url, 10000); }
+  let blob;
+  try{ blob = await getWithTimeout(url, 10000, 'blob'); }
   catch(e){ if(/HTTP 404/.test(String(e && e.message))) return -1; throw e; }   // タイルなし＝その範囲に雨雲なし
-  const src = URL.createObjectURL(await r.blob());
+  const src = URL.createObjectURL(blob);
   try{
     const im = await new Promise((ok, ng) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ng; i.src = src; });
     const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
@@ -634,8 +769,7 @@ async function tileMaxBin(url, t, rad){   // 戻り値：-1＝雨なし、0以�
 async function fetchRadar(){
   if(!CONFIG.radar) return;
   try{
-    const r = await getWithTimeout('https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json', 8000);
-    const e = (await r.json()).filter(x => (x.elements || []).includes('hrpns')).sort((a,b) => String(b.validtime).localeCompare(String(a.validtime)))[0];
+    const e = (await getWithTimeout('https://www.jma.go.jp/bosai/jmatile/data/nowc/targetTimes_N1.json', 8000)).filter(x => (x.elements || []).includes('hrpns')).sort((a,b) => String(b.validtime).localeCompare(String(a.validtime)))[0];
     if(!e) return;
     const t = tileOf(CONFIG.lat, CONFIG.lon, CONFIG.tileZoom);
     const bin = await tileMaxBin(`https://www.jma.go.jp/bosai/jmatile/data/nowc/${e.basetime}/none/${e.validtime}/surf/hrpns/${t.z}/${t.x}/${t.y}.png`, t, 2);
@@ -646,20 +780,32 @@ async function fetchRadar(){
 async function fetchRainForecast(){
   if(!CONFIG.rainForecast) return;
   try{
-    const r = await getWithTimeout('https://www.jma.go.jp/bosai/jmatile/data/rasrf/targetTimes.json', 8000);
-    const list = (await r.json()).filter(x => (x.elements || []).includes('rasrf') && x.basetime && x.validtime);
+    const list = (await getWithTimeout('https://www.jma.go.jp/bosai/jmatile/data/rasrf/targetTimes.json', 8000)).filter(x => (x.elements || []).includes('rasrf') && x.basetime && x.validtime);
     const byValid = new Map();          // 予報時刻ごとに、いちばん新しい発表を使う（数時間先までと、それ以降で発表時刻が異なるため）
     for(const it of list){ const v = String(it.validtime), old = byValid.get(v); if(!old || String(it.basetime) > String(old.basetime)) byValid.set(v, it); }
     const now = Date.now(), t = tileOf(CONFIG.lat, CONFIG.lon, CONFIG.tileZoom);
-    const items = [...byValid.values()].filter(it => { const T = parseUtc(String(it.validtime)); return T >= now - 2*3600000 && T <= now + 14*3600000; });
-    const results = await Promise.allSettled(items.map(async it => [parseUtc(String(it.validtime)),
-      await tileMaxBin(`https://www.jma.go.jp/bosai/jmatile/data/rasrf/${it.basetime}/none/${it.validtime}/surf/rasrf/${t.z}/${t.x}/${t.y}.png`, t, 1)]));
-    const next = {};
-    for(const k of Object.keys(rainFc)) if(+k >= now - 3*3600000) next[k] = rainFc[k];     // 読めなかった時刻は前回の値を残す
-    for(const res of results) if(res.status === 'fulfilled') next[res.value[0]] = res.value[1];
-    rainFc = next;                      // 時刻（その時刻までの1時間）→ 降水の区分
-    if(results.some(x => x.status === 'fulfilled')) diag.rain = Date.now();
+    const items = [...byValid.values()].map(it => ({it, v: parseUtc(String(it.validtime)), b: parseUtc(String(it.basetime))})).filter(x => x.v >= now - 2*3600000 && x.v <= now + 14*3600000);
+    const results = await Promise.allSettled(items.map(async x => ({v: x.v, b: x.b, at: now,
+      bin: await tileMaxBin(`https://www.jma.go.jp/bosai/jmatile/data/rasrf/${x.it.basetime}/none/${x.it.validtime}/surf/rasrf/${t.z}/${t.x}/${t.y}.png`, t, 1)})));
+    const got = results.filter(r => r.status === 'fulfilled').map(r => r.value);
+    if(!got.length) return;                                               // 1コマも読めないときは前回のまま（古くなったら使わない）
+    const id = f => f.v + '/' + f.b, have = new Set(got.map(id)), listed = new Set(items.map(id));
+    rainFc = got.concat(rainFc.filter(f => listed.has(id(f)) && !have.has(id(f))));   // 今回読めなかったコマだけ、前回の値を残す
+    diag.rain = Date.now();
   }catch(err){ /* 一覧が読めないときは前回の値、なければ予報モデルで表示 */ }
+}
+/* 表の時刻 T（その時刻までの1時間）に合うコマを選ぶ。
+   6時間先までの予報は10分ごとに発表され、対象時刻は「発表時刻の1〜6時間後」（例：11:50発表 → 12:50, 13:50 …）で、毎時ちょうどとは限らない。
+   そこで前後30分以内のコマから、①6時間先までの予報・実況（1km四方）を優先 ②時刻が近いもの ③同じなら強いほう、の順で選ぶ */
+function rainFrame(T){
+  const now = Date.now(); let best = null, key = null;
+  for(const f of rainFc){
+    const d = Math.abs(f.v - T);
+    if(d > 30 * 60000 || now - f.at > 3 * 3600000) continue;              // 読んでから3時間たった値は使わない（予報モデルで表示）
+    const k = [(f.v - f.b > 6 * 3600000) ? 1 : 0, d, -f.bin];
+    if(!best || k[0] < key[0] || (k[0] === key[0] && (k[1] < key[1] || (k[1] === key[1] && k[2] < key[2])))){ best = f; key = k; }
+  }
+  return best;
 }
 /* 1時間ごとの雨：現在はレーダー観測 → 気象庁「今後の雨」 → 予報モデル の順に採用 */
 function rainInfo(row, isNow){
@@ -667,8 +813,15 @@ function rainInfo(row, isNow){
   const q = new URLSearchParams(location.search).get('radar');           // ?radar=0 で「現在 小雨（観測）」の表示確認
   if(isNow && q !== null) return fromBin(parseInt(q, 10), 'radar');
   if(isNow && radarNow && Date.now() - radarNow.t < 20 * 60000) return fromBin(radarNow.bin, 'radar');
-  const T = row.t.getTime();
-  if(rainFc[T] !== undefined) return fromBin(rainFc[T], 'jma');
+  const f = rainFrame(row.t.getTime());
+  if(f){
+    let b = f.bin;
+    if(CONFIG.rainFarHours && f.v - f.b > CONFIG.rainFarHours * 3600000 && b >= 1 && row.pr !== null && row.pr !== undefined){   // 気象庁の7時間以上先の予報は強めに出る傾向（気象庁の資料による）→ 予報モデルのほうが弱いときは1段階だけ弱く
+      const v = row.pr, mb = v >= 80 ? 7 : v >= 50 ? 6 : v >= 30 ? 5 : v >= 20 ? 4 : v >= 10 ? 3 : v >= 5 ? 2 : v >= 1 ? 1 : 0;
+      if(mb < b) b = Math.max(mb, b - 1);
+    }
+    return fromBin(b, 'jma');
+  }
   if(row.pr === null || row.pr === undefined) return {level:'na', text:'—', src:'model'};
   if(row.pr >= 1){ const v = row.pr, b = v >= 80 ? 7 : v >= 50 ? 6 : v >= 30 ? 5 : v >= 20 ? 4 : v >= 10 ? 3 : v >= 5 ? 2 : 1;
     return {level:'rain', text: v < 10 ? v.toFixed(1) : v.toFixed(0), bin:b, src:'model'}; }
@@ -781,7 +934,7 @@ function renderNow(rows, i0, now){
 
   const today = rows.filter(r => r.t.getDate() === now.getDate() && r.temp!==null).map(r=>r.temp);
   $('temp').textContent = Math.round(temp);
-  $('tempSub').textContent = today.length ? `最高${Math.round(Math.max(...today))}℃ 最低${Math.round(Math.min(...today))}℃` : '';
+  $('tempSub').textContent = today.length >= 20 ? `最高${Math.round(Math.max(...today))}℃ 最低${Math.round(Math.min(...today))}℃` : '';   // 途中の時刻から始まる予報（予備2）では出さない
   $('rh').textContent = Math.round(rh);
   $('rh').parentElement.style.fontSize = Math.round(rh) >= 100 ? 'min(9.5vh,5.3vw)' : '';
 
@@ -911,42 +1064,84 @@ function renderAll(d){
   renderTable(rows, i0, now); renderChart(rows, i0, now); renderNow(rows, i0, now);
   renderSun(now); renderCampaign(now); renderDays(rows, now); renderDiag(); fitHeader();
 }
+function safeRender(){                     // 表示の途中でエラーが出ても、更新の流れを止めない
+  if(!lastData) return false;
+  try{ renderAll(lastData); renderErr = ''; return true; }
+  catch(e){ const msg = String((e && e.message) || e).slice(0, 80); if(msg !== renderErr) logEv('表示エラー：' + msg); renderErr = msg; return false; }
+}
 async function refresh(){
-  let ok = false;
-  try{ const w = await fetchWeather(); lastData = w.data; lastSrc = w.src; ok = true; }catch(e){ /* 下で処理 */ }
-  await Promise.all([fetchJmaWx(), fetchJma(), fetchWarn(), fetchRadar(), fetchRainForecast()]);   // 気象庁の各情報は個別に失敗しても前回値を保持
-  if(lastData) renderAll(lastData);          // 取得に失敗しても、手元（保存分を含む）の3日分の予報で「現在」を進める
-  if(ok){
-    lastOk = Date.now(); diag.om = lastOk;
-    saveForecast();
-    $('error').textContent = '';
-    if(retryTimer){ clearTimeout(retryTimer); retryTimer = null; }
-  }else{
-    $('error').textContent = `更新失敗 ${fmtHM(new Date())}・再試行中`;
-    if(!retryTimer) retryTimer = setTimeout(()=>{ retryTimer=null; refresh(); }, CONFIG.retryMinutes*60*1000);
-  }
-  showUpdated();
-  fitHeader();                               // 「更新」「更新失敗」の表示を書き換えた後の幅で見出しを収める
-  renderDiag();
-  checkStale();
+  if(refreshing && Date.now() - refreshing < 180000) return;   // 取得中は重ねて走らせない（3分たっても終わらないときだけ、やり直しを許す）
+  refreshing = Date.now();
+  try{
+    let ok = false, got = null;
+    try{ got = await fetchWeather(); }catch(e){ /* 下で処理 */ }
+    await Promise.all([fetchJmaWx(), fetchJma(), fetchWarn(), fetchRadar(), fetchRainForecast()]);   // 気象庁の各情報は個別に失敗しても前回値を保持
+    if(got){
+      const keep = [lastData, lastSrc];
+      lastData = got.data; lastSrc = got.src;
+      if(safeRender()) ok = true;
+      else{ const msg = renderErr; [lastData, lastSrc] = keep; safeRender(); renderErr = msg; }   // 新しい予報で表示に失敗したら、前の予報に戻す
+    }else safeRender();                      // 取得に失敗しても、手元（保存分を含む）の3日分の予報で「現在」を進める
+    if(ok){
+      lastOk = sessionOk = Date.now(); diag.om = lastOk; failCount = 0;
+      saveForecast();
+      $('error').textContent = '';
+      if(retryTimer){ clearTimeout(retryTimer); retryTimer = null; }
+    }else{
+      $('error').textContent = `更新失敗 ${fmtHM(new Date())}・再試行中`;
+      const steps = (CONFIG.retrySteps && CONFIG.retrySteps.length) ? CONFIG.retrySteps : [5], min = steps[Math.min(failCount, steps.length - 1)];
+      failCount++;
+      if(!retryTimer) retryTimer = setTimeout(()=>{ retryTimer=null; refresh(); }, min*60*1000);   // 起動直後は通信が安定しないことがあるので、はじめは短い間隔で取り直す
+    }
+    const st = ok ? lastSrc : (got ? 'render' : 'fail'), why = srcWhy();   // 取得の状態が変わったときだけ記録する（失敗が続いても1件）
+    if(st !== wxState){
+      logEv(ok ? `予報：${SRC_NAME[st]}で取得${why ? `（${why}）` : ''}` : got ? '予報：取得したが表示できず' : `予報：取得できず（${why}）`);
+      wxState = st;
+    }
+    showUpdated();
+    fitHeader();                             // 「更新」「更新失敗」の表示を書き換えた後の幅で見出しを収める
+    renderDiag();
+    checkStale();
+    if(Date.now() - updT > (ok ? 50 : 4.5) * 60000) checkUpdate(false);   // 公開中の版の確認：ふだんは1時間ごと。予報が取れないときは約5分ごと（回線が生きているかの見分けと、直した版を早く受け取るため）
+  }finally{ refreshing = 0; }
 }
-/* 長時間更新できないときは画面中央に表示（時計だけ動いて古い値を出し続けるのを防ぐ） */
-function netOk(){                       // 直近30分に気象庁のどれかが取れている＝テレビのネットは正常
-  const now = Date.now();
-  return [diag.fc, diag.wx, diag.warn, diag.radar, diag.rain].some(t => t && now - t < 30 * 60000);
+/* 公開中の版を確かめる：新しい版が出ていれば読み直す（force＝毎日の読み直し。同じ版でも読み直す）。途中で切れたもの・文法エラーのあるものは読み込まない */
+async function checkUpdate(force){
+  if(!CONFIG.autoUpdate){ if(force){ logEv('毎日の読み直し'); location.reload(); } return; }
+  updT = Date.now();
+  try{
+    const html = await getWithTimeout(location.pathname, 15000, 'text');          // 公開中のこのページ自身を取り直す
+    diag.gh = Date.now();
+    const ver = (html.match(/\bversion:\s*'([^']+)'/) || [])[1], scripts = html.match(/<script\b[^>]*>[\s\S]*?<\/script>/g);
+    if(!ver || !scripts || !/<\/html>\s*$/.test(html)) return;
+    if(ver === CONFIG.version && !force){ if(updNote){ updNote = ''; renderDiag(); } return; }
+    try{ for(const s of scripts) new Function(s.replace(/^<script\b[^>]*>/, '').replace(/<\/script>$/, '')); }   // 文法エラーがないことを確かめてから読み込む
+    catch(e){ if(!updNote) logEv(`公開中の版 v${ver} に誤りあり（読み込まない）`); updNote = '新しい版に誤りあり'; renderDiag(); return; }
+    updNote = '';
+    let rec = null; try{ rec = JSON.parse(localStorage.getItem('tenki.reload') || 'null'); }catch(e){}
+    if(!force && rec && rec.ver === ver && Date.now() - rec.t < 50*60000) return;   // 同じ版への読み直しを短い間隔で繰り返さない
+    try{ localStorage.setItem('tenki.reload', JSON.stringify({ver, t: Date.now()})); }catch(e){}
+    logEv(ver === CONFIG.version ? '毎日の読み直し' : `新しい版 v${ver} を読み込み`);
+    location.reload();
+  }catch(e){ /* 取れないとき（通信断など）は今の版のまま続ける */ }
 }
+/* 長く止まったときは画面中央に表示（時計だけ動いて古い値を出し続けるのを防ぐ）。回線の問題か、配信元だけの問題かで出し分ける */
 function checkStale(){
-  const base = lastOk || PAGE_T0, age = Date.now() - base;
-  const stale = lastOk ? age > CONFIG.staleHours * 3600000 : age > 30 * 60000;
-  document.body.classList.toggle('stale', stale);
-  if(stale){
-    const t = new Date(base), today = new Date();
-    const when = (t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t);
-    $('stale').innerHTML = netOk()
-      ? `予報の配信元が一時停止しています<small>${lastOk ? `最終更新 ${when}　` : ''}自動で再試行中です（操作は不要です）</small>`
-      : lastOk ? `予報の更新が止まっています<small>最終更新 ${when}　ネット回線・電源を確認してください</small>`
-               : `予報を取得できません<small>ネット回線を確認してください</small>`;
+  const now = Date.now(), up = now - PAGE_T0, settled = up > 30 * 60000 && now - resumeT > 5 * 60000;   // 起動から30分・休止からの再開から5分は、取り直しを待つ（あわてて表示しない）
+  const contact = Math.max(sessionOk, diag.fc, diag.wx, diag.warn, diag.radar, diag.rain, diag.gh);   // この画面を開いてから、外のどこかに届いた最後の時刻
+  let last = '';
+  if(lastOk){ const t = new Date(lastOk), today = new Date(); last = `最終更新 ${(t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t)}　`; }
+  let html = '';
+  if(contact && now - contact < 75 * 60000){                 // 回線は正常：止まっているのは予報の配信元だけ → 手元の予報で表示を続け、長引いたときだけ知らせる
+    if(!lastData){ if(up > 30 * 60000) html = `予報の配信元が一時停止しています<small>自動で再試行中です（操作は不要です）</small>`; }
+    else if(now - lastOk > CONFIG.staleSourceHours * 3600000) html = `予報の配信元が停止しています<small>${last}自動で再試行中です（操作は不要です）</small>`;
+  }else if(settled && (!contact || now - contact > CONFIG.staleHours * 3600000)){   // どこにも届かない：テレビがネットにつながっていない
+    html = `ネットにつながっていません<small>${last}${CONFIG.restartHint || ''}</small>`;
   }
+  document.body.classList.toggle('stale', !!html);
+  if(html) $('stale').innerHTML = html;
+  const key = html.replace(/<small>[\s\S]*$/, '');
+  if(key !== staleState){ logEv(key ? `中央に表示：${key}` : '中央の表示が消えた'); staleState = key; }
 }
 function scheduleNext(){
   const now = new Date(), next = new Date(now);
@@ -955,13 +1150,13 @@ function scheduleNext(){
   setTimeout(()=>{ refresh(); scheduleNext(); }, next - now);
 }
 let rerenderTimer = null;
-const rerender = () => { if(!lastData) return; clearTimeout(rerenderTimer); rerenderTimer = setTimeout(()=>renderAll(lastData), 150); };
+const rerender = () => { if(!lastData) return; clearTimeout(rerenderTimer); rerenderTimer = setTimeout(safeRender, 150); };
 window.addEventListener('resize', rerender);
 /* レーダーは5分ごと、「今後の雨」は30分ごとに取り直して「現在」と降水の行を更新 */
 setInterval(async () => {
   await fetchRadar();
   if(++rainTick % 6 === 0) await fetchRainForecast();
-  if(lastData) renderAll(lastData);
+  safeRender();
 }, 5 * 60 * 1000);
 if(document.fonts && document.fonts.ready) document.fonts.ready.then(rerender);   // Webフォント読込後に列位置を再計算
 if(window.ResizeObserver) new ResizeObserver(rerender).observe($('chartTemp'));
@@ -969,9 +1164,18 @@ if(window.ResizeObserver) new ResizeObserver(rerender).observe($('chartTemp'));
 { const bg = new URLSearchParams(location.search).get('bg'); if(bg) CONFIG.skyMode = bg; }
 $('place').textContent = CONFIG.placeName;
 $('ver').textContent = CONFIG.version;
-{ const s = loadForecast(); if(s){ lastData = s.data; lastOk = s.t; lastSrc = s.src || 'main'; diag.om = s.t; renderAll(lastData); showUpdated(); fitHeader(); } }
+{ let prev = 0; try{ prev = +localStorage.getItem(ALIVE_KEY) || 0; }catch(e){}       // 起動の記録（前回いつまで動いていたかも残す）
+  logEv(`起動 v${CONFIG.version}` + (prev ? `（前回の動作は ${fmtMDHM(prev)} ごろまで）` : ''));
+  try{ localStorage.setItem(ALIVE_KEY, String(Date.now())); }catch(e){} }
+try{                                         // 保存してある予報があれば、取得を待たずにすぐ表示（表示できない中身なら使わない）
+  const s = loadForecast();
+  if(s){ lastData = s.data; lastOk = s.t; lastSrc = s.src || 'main'; diag.om = s.t; if(!safeRender()){ lastData = null; lastOk = 0; lastSrc = ''; diag.om = 0; renderErr = ''; } showUpdated(); fitHeader(); }
+}catch(e){}
+if(new URLSearchParams(location.search).get('log') !== null) toggleLog(true);   // ?log=1 で記録の表示を確認
+tickClock();
 refresh();
 scheduleNext();
+window.boardStarted = true;                  // 見張りへの合図：ここまで動いた
 </script>
 </body>
 </html>
