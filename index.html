@@ -181,7 +181,7 @@
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.17',
+  version: '1.18',
   radar: true,                    // 「現在」の雨を気象庁レーダー（高解像度降水ナウキャスト）の観測で表示
   rainForecast: true,             // 降水の行を気象庁「今後の雨」（降水短時間予報・1km四方）で表示
   tileZoom: 10,                   // 気象庁の地図タイルの拡大段階（10＝約120m/画素）
@@ -215,6 +215,9 @@ const CONFIG = {
   ],
   tintColdRow: true,               // 表の「体感」行も同じ色にするか
   staleHours: 6,                   // この時間以上予報を更新できないと画面中央に「更新停止」を表示
+  retryMinutes: 5,                 // 予報の取得に失敗したときの再試行の間隔（分）
+  fallbackApi: true,               // 予報の配信元（api.open-meteo.com）に届かないときは、Open-Meteoの別サーバー（historical-forecast-api）から同じ予報を取る
+  saveForecast: true,              // 最後に取れた予報（3日分）をテレビ内に保存し、再起動・再読込の直後もそれで表示する
   skyNight: [18, 5],           // この時刻の間は夜扱い（背景を暗くする）
   dimNight: [22, 5], dimLevel: 0.75,   // この時刻の間は画面全体を減光（1で無効）
   jmaOffice: '100000', jmaArea: '100010',   // 気象庁 府県予報（今日の概況）と地域時系列予報（3時間ごとの天気）。渋川市を含む区域
@@ -239,8 +242,8 @@ const CONFIG = {
 
 /* ===== 状態 ===== */
 const PAGE_T0 = Date.now();
-let lastData = null, lastOk = 0, retryTimer = null, jmaText = '', jmaWarn = [], warnShown = [];
-const diag = {fc:0, wx:0, warn:0, radar:0, rain:0};   // 各データの最終取得成功時刻（管理者向けの自己診断）
+let lastData = null, lastOk = 0, lastSrc = '', retryTimer = null, jmaText = '', jmaWarn = [], warnShown = [];   // lastSrc：'main'（通常）／'fallback'（予備）
+const diag = {fc:0, wx:0, om:0, warn:0, radar:0, rain:0};   // 各データの最終取得成功時刻（管理者向けの自己診断）。om＝予報モデル（Open-Meteo）
 
 /* ===== 環境省の暑さ指数レベル ===== */
 const LEVELS = [
@@ -371,7 +374,7 @@ function tickClock(){
   $('clock').innerHTML = `<span class="d">${d.getMonth()+1}月${d.getDate()}日（${'日月火水木金土'[d.getDay()]}）</span><span class="t">${fmtHM(d)}</span>`;
   // 毎日3:30に再読込（読込から1時間以上たち、直近の更新が成功しているときだけ＝通信断のときは白画面にしない）
   if(d.getHours()===CONFIG.dailyReloadHour && d.getMinutes()>=30 && Date.now()-PAGE_T0 > 3600000 && lastOk && Date.now()-lastOk < 2*3600000) location.reload();
-  if(d.getSeconds() === 0){ checkStale(); renderDiag(); }
+  if(d.getSeconds() === 0){ checkStale(); renderDiag(); showUpdated(); }
   const h = d.getHours(), [a, b] = CONFIG.dimNight, night = a > b ? (h >= a || h < b) : (h >= a && h < b);
   document.documentElement.style.filter = (night && CONFIG.dimLevel < 1) ? `brightness(${CONFIG.dimLevel})` : '';
 }
@@ -379,13 +382,57 @@ setInterval(tickClock, 1000); tickClock();
 
 /* ===== 気象データ（Open-Meteo） ===== */
 const HVARS = ['temperature_2m','relative_humidity_2m','weather_code','cloud_cover','precipitation','wind_speed_10m','wind_direction_10m','shortwave_radiation','apparent_temperature','is_day'];
+const OM_MAIN = 'https://api.open-meteo.com/v1/forecast';
+const OM_FALLBACK = 'https://historical-forecast-api.open-meteo.com/v1/forecast';   // 同じモデルの予報を同じ形式で返す別サーバー（今日〜明後日を日付で指定）
+function okWeather(j){                // 使える予報か：これから先の時刻に、どれかのモデルの気温が入っていること
+  const h = j && j.hourly;
+  if(!h || !Array.isArray(h.time) || !h.time.length) return false;
+  const now = Date.now();
+  return h.time.some((s, i) => parseLocal(s).getTime() > now && CONFIG.models.some(m => {
+    const a = h[`temperature_2m_${m}`] || (CONFIG.models.length === 1 ? h.temperature_2m : null);
+    return a && a[i] !== null && a[i] !== undefined;
+  }));
+}
 async function fetchWeather(){
-  const q = new URLSearchParams({
+  const base = {
     latitude: CONFIG.lat, longitude: CONFIG.lon, hourly: HVARS.join(','), models: CONFIG.models.join(','),
-    timezone: 'Asia/Tokyo', wind_speed_unit: 'ms', forecast_days: 3
-  });
-  const r = await getWithTimeout('https://api.open-meteo.com/v1/forecast?'+q, 20000);
-  return r.json();
+    timezone: 'Asia/Tokyo', wind_speed_unit: 'ms'
+  };
+  try{
+    const r = await getWithTimeout(OM_MAIN + '?' + new URLSearchParams({...base, forecast_days: 3}), 10000);
+    const j = await r.json();
+    if(!okWeather(j)) throw new Error('予報の中身が空');
+    return {data: j, src: 'main'};
+  }catch(e){
+    if(!CONFIG.fallbackApi) throw e;
+    const d0 = new Date(), d2 = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + 2);
+    const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    const r = await getWithTimeout(OM_FALLBACK + '?' + new URLSearchParams({...base, start_date: ymd(d0), end_date: ymd(d2)}), 15000);
+    const j = await r.json();
+    if(!okWeather(j)) throw new Error('予報の中身が空');
+    return {data: j, src: 'fallback'};
+  }
+}
+/* 最後に取れた予報をテレビ内（ブラウザの保存領域）に保存。保存できない環境では何もしない */
+const SAVE_KEY = 'tenki.forecast';
+function saveForecast(){
+  if(!CONFIG.saveForecast) return;
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify({v:1, t:lastOk, src:lastSrc, place:`${CONFIG.lat},${CONFIG.lon}`, models:CONFIG.models.join(','), data:lastData})); }catch(e){}
+}
+function loadForecast(){
+  if(!CONFIG.saveForecast) return null;
+  try{
+    const s = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null');
+    if(!s || s.v !== 1 || !s.t || !s.data || s.place !== `${CONFIG.lat},${CONFIG.lon}` || s.models !== CONFIG.models.join(',')) return null;
+    if(Date.now() - s.t > 3 * 86400000) return null;          // 3日を超えた古い予報は使わない
+    return s;
+  }catch(e){ return null; }
+}
+/* 見出しの「更新 hh:mm」。今日でなければ日付も付け、予備の配信元から取ったときは（予備） */
+function showUpdated(){
+  if(!lastOk){ $('updated').textContent = '--:--'; return; }
+  const t = new Date(lastOk), today = new Date();
+  $('updated').textContent = (t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t) + (lastSrc === 'fallback' ? '（予備）' : '');
 }
 
 /* ===== 合議（アンサンブル）：モデルごとの値を重み付き中央値・多数決でまとめる ===== */
@@ -527,7 +574,7 @@ const warnHas = kind => warnShown.some(w => w.kind === kind);
 /* 自己診断：右下に4つの点（予報・警報・レーダー・今後の雨）。止まっているものは名前を赤で表示 */
 function renderDiag(){
   const now = Date.now(), items = [
-    ['予報', Math.min(diag.fc || 0, diag.wx || 0), 3 * 3600000],
+    ['予報', Math.min(diag.fc || 0, diag.wx || 0, diag.om || 0), 3 * 3600000],
     ['警報', diag.warn, 3 * 3600000],
     ['レーダー', diag.radar, 20 * 60000],
     ['今後の雨', diag.rain, 90 * 60000]
@@ -866,22 +913,28 @@ function renderAll(d){
 }
 async function refresh(){
   let ok = false;
-  try{ lastData = await fetchWeather(); ok = true; }catch(e){ /* 下で処理 */ }
+  try{ const w = await fetchWeather(); lastData = w.data; lastSrc = w.src; ok = true; }catch(e){ /* 下で処理 */ }
   await Promise.all([fetchJmaWx(), fetchJma(), fetchWarn(), fetchRadar(), fetchRainForecast()]);   // 気象庁の各情報は個別に失敗しても前回値を保持
-  if(lastData) renderAll(lastData);          // 取得に失敗しても、手元にある3日分の予報で「現在」を進める
-  fitHeader();
+  if(lastData) renderAll(lastData);          // 取得に失敗しても、手元（保存分を含む）の3日分の予報で「現在」を進める
   if(ok){
-    lastOk = Date.now();
-    $('updated').textContent = fmtHM(new Date());
+    lastOk = Date.now(); diag.om = lastOk;
+    saveForecast();
     $('error').textContent = '';
     if(retryTimer){ clearTimeout(retryTimer); retryTimer = null; }
   }else{
     $('error').textContent = `更新失敗 ${fmtHM(new Date())}・再試行中`;
-    if(!retryTimer) retryTimer = setTimeout(()=>{ retryTimer=null; refresh(); }, 10*60*1000);
+    if(!retryTimer) retryTimer = setTimeout(()=>{ retryTimer=null; refresh(); }, CONFIG.retryMinutes*60*1000);
   }
+  showUpdated();
+  fitHeader();                               // 「更新」「更新失敗」の表示を書き換えた後の幅で見出しを収める
+  renderDiag();
   checkStale();
 }
 /* 長時間更新できないときは画面中央に表示（時計だけ動いて古い値を出し続けるのを防ぐ） */
+function netOk(){                       // 直近30分に気象庁のどれかが取れている＝テレビのネットは正常
+  const now = Date.now();
+  return [diag.fc, diag.wx, diag.warn, diag.radar, diag.rain].some(t => t && now - t < 30 * 60000);
+}
 function checkStale(){
   const base = lastOk || PAGE_T0, age = Date.now() - base;
   const stale = lastOk ? age > CONFIG.staleHours * 3600000 : age > 30 * 60000;
@@ -889,8 +942,10 @@ function checkStale(){
   if(stale){
     const t = new Date(base), today = new Date();
     const when = (t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t);
-    $('stale').innerHTML = lastOk ? `予報の更新が止まっています<small>最終更新 ${when}　ネット回線・電源を確認してください</small>`
-                                  : `予報を取得できません<small>ネット回線を確認してください</small>`;
+    $('stale').innerHTML = netOk()
+      ? `予報の配信元が一時停止しています<small>${lastOk ? `最終更新 ${when}　` : ''}自動で再試行中です（操作は不要です）</small>`
+      : lastOk ? `予報の更新が止まっています<small>最終更新 ${when}　ネット回線・電源を確認してください</small>`
+               : `予報を取得できません<small>ネット回線を確認してください</small>`;
   }
 }
 function scheduleNext(){
@@ -914,6 +969,7 @@ if(window.ResizeObserver) new ResizeObserver(rerender).observe($('chartTemp'));
 { const bg = new URLSearchParams(location.search).get('bg'); if(bg) CONFIG.skyMode = bg; }
 $('place').textContent = CONFIG.placeName;
 $('ver').textContent = CONFIG.version;
+{ const s = loadForecast(); if(s){ lastData = s.data; lastOk = s.t; lastSrc = s.src || 'main'; diag.om = s.t; renderAll(lastData); showUpdated(); fitHeader(); } }
 refresh();
 scheduleNext();
 </script>
