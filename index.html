@@ -123,7 +123,7 @@
 
   /* 更新停止の表示 */
   #stale{display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:10;background:rgba(18,24,32,.94);color:#f2c400;border:.4vh solid #f2c400;border-radius:1.2vh;padding:2.4vh 3vw;font-size:4.6vh;font-weight:700;text-align:center;white-space:nowrap}
-  #stale small{display:block;margin-top:1vh;font-size:2.6vh;font-weight:400;color:#e8e2d6}
+  #stale small{display:block;margin-top:1vh;font-size:3.2vh;font-weight:400;color:#e8e2d6}
   body.stale #stale{display:block}
   body.stale .cur, body.stale .chart, body.stale .tbl{opacity:.35}
 
@@ -195,7 +195,7 @@ setTimeout(function(){ if(!window.boardStarted) location.reload(); }, 600000);
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.19',
+  version: '1.20',
   radar: true,                    // 「現在」の雨を気象庁レーダー（高解像度降水ナウキャスト）の観測で表示
   rainForecast: true,             // 降水の行を気象庁「今後の雨」（降水短時間予報・1km四方）で表示
   tileZoom: 10,                   // 気象庁の地図タイルの拡大段階（10＝約120m/画素）
@@ -228,9 +228,8 @@ const CONFIG = {
     {min:-Infinity, bg:'#effcfd'}   // -6℃以下：霜・雪の白
   ],
   tintColdRow: true,               // 表の「体感」行も同じ色にするか
-  staleHours: 2,                   // テレビがネットにつながらない状態がこの時間続いたら、画面中央に「ネットにつながっていません」と再起動の案内を表示
-  staleSourceHours: 24,            // 回線は正常で予報の配信元だけが止まっているときは、手元の予報がこの時間より古くなるまで、ふつうに表示を続ける
-  restartHint: 'リモコンの電源ボタンを長押し →「再起動」。直らないときは事務所へ',   // ネットにつながらないときに画面に出す案内
+  staleHours: 2,                   // テレビがネットにつながらない状態がこの時間続いたら、画面中央に「最新の情報ではありません」と最後の更新時刻を表示
+  staleSourceHours: 24,            // 回線は正常で予報の配信元だけが止まっているときは、手元の予報がこの時間より古くなるまで、ふつうに表示を続ける（超えたら同じ表示）
   retrySteps: [0.5, 1, 2, 5],      // 予報の取得に失敗したときの再試行の間隔（分）。失敗が続くと右の値へ進み、最後の値を繰り返す
   fallbackApi: true,               // 予報の配信元（api.open-meteo.com）に届かないときは、Open-Meteoの別サーバー（historical-forecast-api）から同じ予報を取る
   metnoApi: true,                  // 通常・予備の両方に届かないときは、ノルウェー気象研究所（MET Norway）の予報を使う（別の機関の配信。見出しに「予備2」と出る）
@@ -266,7 +265,7 @@ let lastData = null, lastOk = 0, lastSrc = '', retryTimer = null, jmaText = '', 
 let sessionOk = 0, failCount = 0, refreshing = 0, renderErr = '', updT = PAGE_T0, updNote = '', dailyTry = 0;   // sessionOk：この画面を開いてから予報が取れた最後の時刻
 let clockText = '', lastMin = -1, dimOn = null;
 const srcErr = {main:'', fallback:'', metno:''};   // 直近の取得で失敗した配信元とその理由（t＝時間切れ、n＝不通（つながらない）、e＝空（中身が使えない）、数字＝HTTPの番号）
-const SRC_NAME = {main:'通常', fallback:'予備', metno:'予備2'}, SRC_WHY = {t:'時間切れ', n:'不通', e:'空'};   // 画面右下に出すので短く
+const SRC_NAME = {main:'通常', fallback:'予備', metno:'予備2'}, SRC_WHY = {t:'時間切れ', n:'不通', e:'空'};   // 「動作の記録」に残す理由の言い方
 const srcWhy = () => {                             // 失敗した配信元を理由ごとにまとめる（例：通常/予備:不通 予備2:時間切れ）
   const g = {};
   for(const k of Object.keys(srcErr)) if(srcErr[k]){ const w = SRC_WHY[srcErr[k]] || 'HTTP' + srcErr[k]; (g[w] = g[w] || []).push(SRC_NAME[k]); }
@@ -455,7 +454,7 @@ window.addEventListener('unhandledrejection', e => { if(errLogged++ < 5) logEv('
 /* ===== 時計・日次リロード ===== */
 function tickClock(){
   const d = new Date(), nowMs = d.getTime();
-  if(nowMs - lastTick > 180000){                 // 3分以上の空白＝テレビの休止・固まりなど。再開したらすぐ取り直し、取り直す間は「ネットにつながっていません」を出さない
+  if(nowMs - lastTick > 180000){                 // 3分以上の空白＝テレビの休止・固まりなど。再開したらすぐ取り直し、取り直す間は中央の表示を出さない
     logEv(`動きが止まっていた ${fmtMDHM(lastTick)}〜${fmtHM(d)}`);
     resumeT = lastTick = nowMs; refresh();
   }
@@ -705,7 +704,7 @@ function renderWarn(){
   $('warns').innerHTML = warnShown.map(w => `<span class="wchip w${w.level}">${w.name}</span>`).join('');
 }
 const warnHas = kind => warnShown.some(w => w.kind === kind);
-/* 自己診断：右下に4つの点（予報・警報・レーダー・今後の雨）。止まっているものは名前を赤で表示。予報の配信元で失敗したものは、その理由も小さく出す */
+/* 自己診断：右下に4つの点（予報・警報・レーダー・今後の雨）。止まっているものは名前を赤で表示。配信元の失敗理由は画面に出さない（取得元は見出しの「（予備）」「（予備2）」で分かる。理由は「動作の記録」に残る） */
 function renderDiag(){
   const now = Date.now(), items = [
     ['予報', Math.min(diag.fc || 0, diag.wx || 0, diag.om || 0), 3 * 3600000],
@@ -713,7 +712,7 @@ function renderDiag(){
     ['レーダー', diag.radar, 20 * 60000],
     ['今後の雨', diag.rain, 90 * 60000]
   ];
-  const why = [renderErr ? '表示エラー' : '', updNote, srcWhy()].filter(Boolean).join(' ');
+  const why = [renderErr ? '表示エラー' : '', updNote].filter(Boolean).join(' ');   // プログラムの異常だけ、点の左に小さく出す
   $('diag').innerHTML = (why ? `<span class="why">${why}</span>` : '') + items.map(([name, t, th]) => {
     const st = t ? (now - t < th ? 'ok' : 'ng') : (now - PAGE_T0 > th ? 'ng' : 'na');
     return st === 'ng' ? `<span class="ng"><span class="d ng"></span>${name}</span>` : `<span class="d ${st}"></span>`;
@@ -1125,22 +1124,22 @@ async function checkUpdate(force){
     location.reload();
   }catch(e){ /* 取れないとき（通信断など）は今の版のまま続ける */ }
 }
-/* 長く止まったときは画面中央に表示（時計だけ動いて古い値を出し続けるのを防ぐ）。回線の問題か、配信元だけの問題かで出し分ける */
+/* 長く止まったときは画面中央に表示（時計だけ動いて古い値を出し続けるのを防ぐ）。見る人には「最新の情報ではない」ことだけを伝え、原因（回線か、配信元か）は「動作の記録」に残す */
 function checkStale(){
   const now = Date.now(), up = now - PAGE_T0, settled = up > 30 * 60000 && now - resumeT > 5 * 60000;   // 起動から30分・休止からの再開から5分は、取り直しを待つ（あわてて表示しない）
   const contact = Math.max(sessionOk, diag.fc, diag.wx, diag.warn, diag.radar, diag.rain, diag.gh);   // この画面を開いてから、外のどこかに届いた最後の時刻
   let last = '';
-  if(lastOk){ const t = new Date(lastOk), today = new Date(); last = `最終更新 ${(t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t)}　`; }
-  let html = '';
+  if(lastOk){ const t = new Date(lastOk), today = new Date(); last = `最終更新 ${(t.toDateString() === today.toDateString() ? '' : `${t.getMonth()+1}/${t.getDate()} `) + fmtHM(t)}`; }
+  const msg = lastData ? `最新の情報ではありません<small>${last}</small>` : '情報を取得できていません';   // まだ一度も取れていないときは後者
+  let html = '', cause = '';
   if(contact && now - contact < 75 * 60000){                 // 回線は正常：止まっているのは予報の配信元だけ → 手元の予報で表示を続け、長引いたときだけ知らせる
-    if(!lastData){ if(up > 30 * 60000) html = `予報の配信元が一時停止しています<small>自動で再試行中です（操作は不要です）</small>`; }
-    else if(now - lastOk > CONFIG.staleSourceHours * 3600000) html = `予報の配信元が停止しています<small>${last}自動で再試行中です（操作は不要です）</small>`;
+    if(lastData ? (now - lastOk > CONFIG.staleSourceHours * 3600000) : (up > 30 * 60000)){ html = msg; cause = '予報の配信元が停止'; }
   }else if(settled && (!contact || now - contact > CONFIG.staleHours * 3600000)){   // どこにも届かない：テレビがネットにつながっていない
-    html = `ネットにつながっていません<small>${last}${CONFIG.restartHint || ''}</small>`;
+    html = msg; cause = 'ネットにつながらない';
   }
   document.body.classList.toggle('stale', !!html);
   if(html) $('stale').innerHTML = html;
-  const key = html.replace(/<small>[\s\S]*$/, '');
+  const key = html ? `${html.replace(/<small>[\s\S]*$/, '')}（${cause}）` : '';
   if(key !== staleState){ logEv(key ? `中央に表示：${key}` : '中央の表示が消えた'); staleState = key; }
 }
 function scheduleNext(){
