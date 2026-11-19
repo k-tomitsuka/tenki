@@ -195,7 +195,7 @@ setTimeout(function(){ if(!window.boardStarted) location.reload(); }, 600000);
 <script>
 /* ===== 設定 ===== */
 const CONFIG = {
-  version: '1.20',
+  version: '1.21',
   radar: true,                    // 「現在」の雨を気象庁レーダー（高解像度降水ナウキャスト）の観測で表示
   rainForecast: true,             // 降水の行を気象庁「今後の雨」（降水短時間予報・1km四方）で表示
   tileZoom: 10,                   // 気象庁の地図タイルの拡大段階（10＝約120m/画素）
@@ -397,17 +397,47 @@ async function getWithTimeout(url, ms, as, cacheMode){   // as：'json'／'text'
 }
 
 /* ===== 動作の記録（原因調べ用） =====
-   起動・予報の取得の失敗と復旧・画面が隠れた時刻・回線の切断などを、テレビ内に新しい順で60件まで残す。
-   リモコンの決定ボタンか方向ボタンを押すと画面に一覧を出す（1分で消える。下ボタンで古い記録へ）。写真に撮れば、止まった時刻と理由があとから分かる */
-const LOG_KEY = 'tenki.log', ALIVE_KEY = 'tenki.alive', LOG_MAX = 60, LOG_ROWS = 22;
-let logBuf = [], logTimer = null, logPage = 0, lastTick = Date.now(), resumeT = 0, wxState = 'main', staleState = '', errLogged = 0, hiddenAt = 0, hiddenLogged = false, leaving = false;   // wxState：予報の取得の状態（はじめは「通常で取得」とみなし、変わったときだけ記録する）
-try{ const a = JSON.parse(localStorage.getItem(LOG_KEY) || '[]'); if(Array.isArray(a)) logBuf = a.filter(x => x && typeof x.t === 'number' && typeof x.m === 'string').slice(-LOG_MAX); }catch(e){}
+   起動・予報の取得の失敗と復旧・画面が隠れた時刻・回線の切断などを、テレビ内に新しい順で150件まで残す。
+   リモコンの決定ボタンか方向ボタンを押すと画面に一覧を出す（1分で消える。下ボタンで古い記録へ）。写真に撮れば、止まった時刻と理由があとから分かる。
+   記録の形：{t:時刻, m:文} が基本。回線が切れている間は {t, k:'off'}、切れてすぐ戻ったものは {t:切れた時刻, k:'net', n:回数, t2:最後に戻った時刻, d:最長の秒数, r:直後の読み直しの回数}
+   （Wi-Fiが短く切れては戻るのを繰り返すと記録がすぐ埋まるので、15分以内の繰り返しは1行にまとめる） */
+const LOG_KEY = 'tenki.log', ALIVE_KEY = 'tenki.alive', WX_KEY = 'tenki.wx', LOG_MAX = 150, LOG_ROWS = 22;
+let logBuf = [], logTimer = null, logPage = 0, lastTick = Date.now(), resumeT = 0, wxState = 'main', staleState = '', errLogged = 0, hiddenAt = 0, hiddenLogged = false, leaving = false, onlineTimer = null;   // wxState：予報の取得の状態（はじめは「通常で取得」とみなし、変わったときだけ記録する）
+const isNum = v => typeof v === 'number' && isFinite(v);
+try{
+  const a = JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+  if(Array.isArray(a)) logBuf = a.filter(x => x && isNum(x.t) && (typeof x.m === 'string' || x.k === 'off' || (x.k === 'net' && isNum(x.n) && isNum(x.t2) && isNum(x.d)))).slice(-LOG_MAX);
+}catch(e){}
+try{                                         // 読み直しのたびに同じ「予備で取得」を記録しないよう、直前の取得の状態を引き継ぐ（3時間以内のものだけ）
+  const w = JSON.parse(localStorage.getItem(WX_KEY) || 'null');
+  if(w && typeof w.s === 'string' && isNum(w.t) && w.t <= Date.now() && Date.now() - w.t < 3 * 3600000) wxState = w.s;
+}catch(e){}
 const fmtMDHM = ms => { const t = new Date(ms); return `${t.getMonth()+1}/${t.getDate()} ${fmtHM(t)}`; };
-function logEv(m, t){
-  logBuf.push({t: t || Date.now(), m: String(m).slice(0, 90)});
+const fmtDur = s => s < 100 ? `${s}秒` : s < 6000 ? `${Math.round(s / 60)}分` : `${(s / 3600).toFixed(1)}時間`;
+function logSave(){
   if(logBuf.length > LOG_MAX) logBuf = logBuf.slice(-LOG_MAX);
   try{ localStorage.setItem(LOG_KEY, JSON.stringify(logBuf)); }catch(e){}
   if(document.body.classList.contains('logv')) renderLog();
+}
+function logEv(m, t){ logBuf.push({t: t || Date.now(), m: String(m).slice(0, 90)}); logSave(); }
+function logText(x){
+  if(x.k === 'off') return '回線が切れた';
+  if(x.k === 'net') return (x.n > 1 ? `回線が切れて戻った ×${x.n}（〜${fmtHM(new Date(x.t2))}${x.d ? `、最長${fmtDur(x.d)}` : ''}）` : `回線が切れて戻った${x.d ? `（${fmtDur(x.d)}）` : ''}`) + (x.r ? `・読み直し${x.r}回` : '');
+  return String(x.m);
+}
+/* 回線が戻ったときの記録。切れてすぐ戻った場合は1行にまとめ、間にほかの記録がある長い切断は「○○ぶり」と書く */
+function netBack(now){
+  let i = logBuf.length - 1;
+  while(i >= 0 && logBuf[i].k !== 'off' && logBuf.length - i < 40) i--;
+  const off = (i >= 0 && logBuf[i].k === 'off') ? logBuf[i] : null, d = off ? Math.max(1, Math.round((now - off.t) / 1000)) : 0;
+  if(off && i < logBuf.length - 1){ logBuf[i] = {t: off.t, m: '回線が切れた'}; logBuf.push({t: now, m: `回線が戻った（${fmtDur(d)}ぶり）`}); }
+  else{
+    if(off) logBuf.pop();
+    const t0 = off ? off.t : now, prev = logBuf[logBuf.length - 1];
+    if(prev && prev.k === 'net' && t0 - prev.t2 < 15 * 60000){ prev.n++; prev.t2 = now; prev.d = Math.max(prev.d, d); }
+    else logBuf.push({t: t0, k: 'net', n: 1, t2: now, d});
+  }
+  logSave();
 }
 function renderLog(){
   const esc = s => String(s).replace(/[&<>]/g, c => ({'&':'&amp;', '<':'&lt;', '>':'&gt;'}[c]));
@@ -415,9 +445,10 @@ function renderLog(){
   let stor = '不可'; try{ localStorage.setItem('tenki.t', '1'); localStorage.removeItem('tenki.t'); stor = '可'; }catch(e){}
   const all = logBuf.slice().reverse(), pages = Math.max(1, Math.ceil(all.length / LOG_ROWS));
   logPage = Math.min(Math.max(0, logPage), pages - 1);
-  $('logv').innerHTML = `<h2>動作の記録（新しい順）<small>v${CONFIG.version}　起動 ${fmtMDHM(PAGE_T0)}（${Math.floor(up/60)}時間${up%60}分前）　画面 ${innerWidth}×${innerHeight}　保存 ${stor}　回線 ${navigator.onLine === false ? '切断' : '接続'}</small></h2>`
-    + all.slice(logPage * LOG_ROWS, (logPage + 1) * LOG_ROWS).map(x => `<div><b>${fmtMDHM(x.t)}</b>${esc(x.m)}</div>`).join('')
-    + `<p>${pages > 1 ? `${logPage + 1}／${pages}ページ（下ボタンで古い記録、上ボタンで戻る）　` : ''}この画面を写真に撮っておくと、止まった時刻と理由があとから分かります。1分で自動的に消えます（決定ボタンでも消えます）</p>`;
+  const kind = (navigator.connection && typeof navigator.connection.type === 'string' && navigator.connection.type !== 'unknown') ? `（${esc(navigator.connection.type)}）` : '';
+  $('logv').innerHTML = `<h2>動作の記録（新しい順）<small>v${CONFIG.version}　起動 ${fmtMDHM(PAGE_T0)}（${Math.floor(up/60)}時間${up%60}分前）　画面 ${innerWidth}×${innerHeight}　保存 ${stor}　回線 ${navigator.onLine === false ? '切断' : '接続'}${kind}</small></h2>`
+    + all.slice(logPage * LOG_ROWS, (logPage + 1) * LOG_ROWS).map(x => `<div><b>${fmtMDHM(x.t)}</b>${esc(logText(x))}</div>`).join('')
+    + `<p>${pages > 1 ? `${logPage + 1}／${pages}ページ（下ボタン＝古い記録、上ボタン＝戻る）　` : ''}1分で消えます（決定ボタンでも消えます）</p>`;
 }
 function toggleLog(on, page){
   clearTimeout(logTimer);
@@ -446,8 +477,11 @@ document.addEventListener('visibilitychange', () => {
     logEv('画面が戻った'); hiddenAt = 0; hiddenLogged = false;
   }
 });
-window.addEventListener('offline', () => logEv('回線が切れた'));
-window.addEventListener('online', () => logEv('回線が戻った'));
+window.addEventListener('offline', () => { logBuf.push({t: Date.now(), k: 'off'}); logSave(); });
+window.addEventListener('online', () => {
+  netBack(Date.now());
+  clearTimeout(onlineTimer); onlineTimer = setTimeout(() => { if(failCount > 0) refresh(); }, 3000);   // 直前の取得に失敗していたら、次の再試行を待たずにすぐ取り直す。取得できているときは何もしない（短い切断を繰り返しても、配信元への問い合わせを重ねない）
+});
 window.addEventListener('error', e => { if(errLogged++ < 5) logEv('エラー：' + ((e && e.message) || '')); });
 window.addEventListener('unhandledrejection', e => { if(errLogged++ < 5) logEv('エラー：' + String((e && e.reason && e.reason.message) || (e && e.reason) || '')); });
 
@@ -1097,6 +1131,7 @@ async function refresh(){
       logEv(ok ? `予報：${SRC_NAME[st]}で取得${why ? `（${why}）` : ''}` : got ? '予報：取得したが表示できず' : `予報：取得できず（${why}）`);
       wxState = st;
     }
+    try{ localStorage.setItem(WX_KEY, JSON.stringify({s: wxState, t: Date.now()})); }catch(e){}
     showUpdated();
     fitHeader();                             // 「更新」「更新失敗」の表示を書き換えた後の幅で見出しを収める
     renderDiag();
@@ -1164,8 +1199,12 @@ if(window.ResizeObserver) new ResizeObserver(rerender).observe($('chartTemp'));
 $('place').textContent = CONFIG.placeName;
 $('ver').textContent = CONFIG.version;
 { let prev = 0; try{ prev = +localStorage.getItem(ALIVE_KEY) || 0; }catch(e){}       // 起動の記録（前回いつまで動いていたかも残す）
-  logEv(`起動 v${CONFIG.version}` + (prev ? `（前回の動作は ${fmtMDHM(prev)} ごろまで）` : ''));
-  try{ localStorage.setItem(ALIVE_KEY, String(Date.now())); }catch(e){} }
+  const now = Date.now();
+  if(logBuf.length && logBuf[logBuf.length - 1].k === 'off' && navigator.onLine !== false) netBack(now);   // 切れている間に読み直しが始まり、戻ってから起動した
+  const last = logBuf[logBuf.length - 1];
+  if(last && last.k === 'net' && now - last.t2 < 2 * 60000 && prev && now - prev < 6 * 60000){ last.r = (last.r || 0) + 1; logSave(); }   // 回線が戻った直後の読み直し（テレビ側の設定によるもの）は、同じ行に回数だけ足す
+  else logEv(`起動 v${CONFIG.version}` + (prev ? `（前回の動作は ${fmtMDHM(prev)} ごろまで）` : ''));
+  try{ localStorage.setItem(ALIVE_KEY, String(now)); }catch(e){} }
 try{                                         // 保存してある予報があれば、取得を待たずにすぐ表示（表示できない中身なら使わない）
   const s = loadForecast();
   if(s){ lastData = s.data; lastOk = s.t; lastSrc = s.src || 'main'; diag.om = s.t; if(!safeRender()){ lastData = null; lastOk = 0; lastSrc = ''; diag.om = 0; renderErr = ''; } showUpdated(); fitHeader(); }
